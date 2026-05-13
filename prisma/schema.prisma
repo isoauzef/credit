@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Homepage form submissions (quote form) ──────────────────────────
+
+// ── Admin user (email + password login) ─────────────────────────────
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model ContactSubmission {
+  id                        Int      @id @default(autoincrement())
+  name                      String   @db.VarChar(255)
+  firstName                 String?  @db.VarChar(128)
+  lastName                  String?  @db.VarChar(128)
+  email                     String   @db.VarChar(255)
+  phone                     String?  @db.VarChar(50)
+  companyName               String?  @db.VarChar(255)
+  companyAddress            String?  @db.VarChar(255)
+  businessLocations         String?  @db.VarChar(128)
+  platform                  String?  @db.VarChar(128)
+  negativeReviewsNeedRemoving String? @db.VarChar(128)
+  budgetPerRemoval          String?  @db.VarChar(128)
+  source                    String?  @db.VarChar(64)
+  metadata                  Json?
+  createdAt                 DateTime @default(now())
+
+  @@map("contact_submissions")
+}
+
+// ── Checkout form submissions with Stripe status ────────────────────
+model CheckoutSubmission {
+  id                    Int      @id @default(autoincrement())
+  name                  String   @db.VarChar(255)
+  email                 String   @db.VarChar(255)
+  phone                 String?  @db.VarChar(50)
+  companyName           String   @db.VarChar(255)
+  googleDataId          String?  @db.VarChar(255)
+  reviewLinks           Json
+  reason                String?  @db.Text
+  quantity              Int      @default(1)
+  amount                Int      @default(0) // cents
+  stripeSessionId       String?  @db.VarChar(255)
+  stripePaymentIntentId String?  @db.VarChar(255)
+  stripeCustomerId      String?  @db.VarChar(255)
+  stripeSetupIntentId   String?  @db.VarChar(255)
+  stripePaymentMethodId String?  @db.VarChar(255)
+  crmLeadId             Int?
+  paymentStatus         String   @default("pending") @db.VarChar(32) // pending | card_saved | charged | canceled | failed
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("checkout_submissions")
+}
+
+// ── Email templates (quote-autoresponse, checkout-success) ──────────
+model EmailTemplate {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique @db.VarChar(64)
+  name        String   @db.VarChar(128)
+  subject     String   @db.VarChar(500)
+  previewText String?  @db.VarChar(500)
+  content     Json     // full template data (same structure as template-data.json)
+  enabled     Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+// ── Key-value settings (stripe, smtp, site, email toggles) ──────────
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @db.VarChar(128)
+  value     String   @db.Text
+  group     String   @db.VarChar(32) // stripe | smtp | site | email
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ── CMS page content (per page + section) ───────────────────────────
+model PageContent {
+  id        Int      @id @default(autoincrement())
+  page      String   @db.VarChar(64)  // homepage | checkout
+  section   String   @db.VarChar(64)  // hero | features | faq | ...
+  content   Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([page, section])
+  @@map("page_content")
+}
