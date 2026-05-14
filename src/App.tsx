@@ -21,6 +21,7 @@ import { FAQ } from "./components/FAQ";
 import { CaseStudies } from "./components/CaseStudies";
 import { Footer } from "./components/Footer";
 import { Navigation } from "./components/Navigation";
+import { BackToTop } from "./components/BackToTop";
 
 export default function App() {
   const featuredLogos = [
@@ -35,6 +36,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white">
   <Navigation />
+      <main id="main-content" tabIndex={-1}>
       <Hero 
         background={imgBackground}
         rectangleIcons={{
@@ -71,7 +73,9 @@ export default function App() {
         svgPaths={svgPaths}
       />
       <CaseStudies />
+      </main>
   <Footer svgPaths={svgPaths} />
+  <BackToTop />
     </div>
   );
 }
