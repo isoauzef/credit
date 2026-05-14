@@ -21,13 +21,14 @@ const PAGES = [
 ];
 
 /* ── field schema registry ───────────────────────────────────── */
-type FT = "text" | "textarea" | "number" | "string-list" | "obj-list";
+type FT = "text" | "textarea" | "number" | "boolean" | "string-list" | "obj-list";
 type FieldDef = { type: FT; label: string; fields?: Record<string, { type: "text" | "textarea" | "number"; label: string }>; itemLabel?: string };
 type Schema = Record<string, FieldDef>;
 
 const t = (label: string): FieldDef => ({ type: "text", label });
 const ta = (label: string): FieldDef => ({ type: "textarea", label });
 const n = (label: string): FieldDef => ({ type: "number", label });
+const b = (label: string): FieldDef => ({ type: "boolean", label });
 const sl = (label: string): FieldDef => ({ type: "string-list", label });
 const ol = (label: string, itemLabel: string, fields: Record<string, { type: "text" | "textarea" | "number"; label: string }>): FieldDef => ({
   type: "obj-list",
@@ -50,9 +51,15 @@ const SCHEMAS: Record<string, Schema> = {
     stats: ol("Statistics", "Stat", { percentage: { type: "text", label: "Percentage" }, label: { type: "text", label: "Label" }, description: { type: "text", label: "Description" } }),
   },
   "homepage/platforms": {
+    badge: t("Badge"),
     heading: t("Heading"),
     subheading: ta("Subheading"),
-    platformList: sl("Platforms"),
+    lawName: t("Law / Program Name"),
+    lawDescription: ta("Law / Program Description"),
+    showBills: b("Show bills section (heading + cards)"),
+    billsHeading: t("Bills Section Heading"),
+    platformList: sl("Bills / Items"),
+    ctaText: t("CTA Button Text"),
   },
   "homepage/features": {
     heading: t("Heading"),
@@ -333,6 +340,21 @@ function FieldRenderer({ fieldKey, def, data, set }: { fieldKey: string; def: Fi
         <label className="block text-xs font-medium text-slate-400 mb-1">{def.label}</label>
         <input type="number" value={value ?? 0} onChange={(e) => set(fieldKey, Number(e.target.value))} className={inputCls + " max-w-xs"} />
       </div>
+    );
+  }
+
+  if (def.type === "boolean") {
+    const checked = value === true;
+    return (
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => set(fieldKey, e.target.checked)}
+          className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+        />
+        <span className="text-sm text-slate-300">{def.label}</span>
+      </label>
     );
   }
 
