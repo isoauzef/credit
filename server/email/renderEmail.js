@@ -176,7 +176,7 @@ async function buildEmailHtml(submission, slug = "quote-autoresponse") {
                   >
                     ${
                       templateData.brand.logoUrl
-                        ? `<img src="${templateData.brand.logoUrl}" width="320" alt="Review Cleaners" style="display:block;max-width:320px;height:auto;margin:0 0 16px 0;border:0;outline:none;text-decoration:none;" />`
+                        ? `<img src="${templateData.brand.logoUrl}" width="320" alt="Credit Removers" style="display:block;max-width:320px;height:auto;margin:0 0 16px 0;border:0;outline:none;text-decoration:none;" />`
                         : ""
                     }
                     <h1 style="margin:0 0 8px 0;font-size:28px;line-height:1.3;color:#ffffff;">${templateData.hero.heading}</h1>

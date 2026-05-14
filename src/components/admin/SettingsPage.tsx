@@ -100,10 +100,10 @@ export default function SettingsPage() {
     },
     {
       title: "CRM Integration",
-      desc: "ReviewCleaners CRM (lead sync). Leave API key blank to disable.",
+      desc: "creditremovers CRM (lead sync). Leave API key blank to disable.",
       keys: [
         { key: "crm_api_key", label: "CRM API Key" },
-        { key: "crm_base_url", label: "CRM Base URL", hint: "Default: https://crm.reviewcleaners.com" },
+        { key: "crm_base_url", label: "CRM Base URL", hint: "Default: https://crm.creditremovers.com" },
       ],
     },
   ];

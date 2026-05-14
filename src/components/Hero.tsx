@@ -27,21 +27,19 @@ const initialFormState = {
   lastName: "",
   email: "",
   phone: "",
-  companyName: "",
-  companyAddress: "",
-  businessLocations: "",
-  platform: "",
-  negativeReviewsNeedRemoving: "",
-  budgetPerRemoval: "",
+  address: "",
+  creditScore: "",
+  negativeItems: "",
+  hasReport: "",
 };
 
 type HeroFormState = typeof initialFormState;
 
-const STEP3_FIELDS = ["platform", "negativeReviewsNeedRemoving", "budgetPerRemoval"] as const;
+const STEP2_FIELDS = ["creditScore", "negativeItems", "hasReport"] as const;
 const MOBILE_SCROLL_MAX_WIDTH = 1024;
-const STEP3_DOUBLE_SUBMIT_GUARD_MS = 400;
+const STEP2_DOUBLE_SUBMIT_GUARD_MS = 400;
 
-type Step3Field = (typeof STEP3_FIELDS)[number];
+type Step2Field = (typeof STEP2_FIELDS)[number];
 type HeroFieldKey = keyof HeroFormState;
 
 const INPUT_IDS: Record<HeroFieldKey, string> = {
@@ -49,17 +47,14 @@ const INPUT_IDS: Record<HeroFieldKey, string> = {
   lastName: "hero-input-last-name",
   email: "hero-input-email",
   phone: "hero-input-phone",
-  companyName: "hero-input-company-name",
-  companyAddress: "hero-input-company-postal-code",
-  businessLocations: "hero-input-business-locations",
-  platform: "hero-input-platform",
-  negativeReviewsNeedRemoving: "hero-input-negative-reviews",
-  budgetPerRemoval: "hero-input-budget-per-removal",
+  address: "hero-input-address",
+  creditScore: "hero-input-credit-score",
+  negativeItems: "hero-input-negative-items",
+  hasReport: "hero-input-has-report",
 };
 
 const BUTTON_IDS = {
   continueStep1: "hero-btn-continue-step1",
-  continueStep2: "hero-btn-continue-step2",
   back: "hero-btn-back",
   submit: "hero-btn-submit",
 } as const;
@@ -67,10 +62,9 @@ const BUTTON_IDS = {
 type HeroButtonId = keyof typeof BUTTON_IDS;
 
 const BUTTON_VALIDATION_FIELDS: Record<HeroButtonId, HeroFieldKey[]> = {
-  continueStep1: ["firstName", "lastName", "email", "phone"],
-  continueStep2: ["companyName", "companyAddress", "businessLocations"],
+  continueStep1: ["firstName", "lastName", "email", "phone", "address"],
   back: [],
-  submit: [...STEP3_FIELDS],
+  submit: [...STEP2_FIELDS],
 };
 
 const createInitialErrorState = (): Record<keyof HeroFormState, boolean> => {
@@ -113,17 +107,17 @@ export function Hero({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [submissionComplete, setSubmissionComplete] = useState(false);
-  const [step3SubmitAttempted, setStep3SubmitAttempted] = useState(false);
+  const [step2SubmitAttempted, setStep2SubmitAttempted] = useState(false);
   const leadEventTrackedRef = useRef(false);
   const formContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
   const viewportHeightRef = useRef<number | null>(null);
   const formInteractionRef = useRef(false);
   const hasRenderedOnceRef = useRef(false);
-  // Track when we arrive on step 3 so we can ignore accidental double clicks that immediately resubmit.
-  const step3EntryTimeRef = useRef<number | null>(null);
+  // Track when we arrive on the final step so we can ignore accidental double clicks that immediately resubmit.
+  const step2EntryTimeRef = useRef<number | null>(null);
 
-  const totalSteps = 3;
+  const totalSteps = 2;
   const previousStepRef = useRef(currentStep);
 
   const scrollFormIntoView = useCallback((delay = 200, options: { force?: boolean } = {}) => {
@@ -154,20 +148,20 @@ export function Hero({
 
   useEffect(() => {
     if (previousStepRef.current !== currentStep) {
-      if (currentStep === 3) {
-        step3EntryTimeRef.current = Date.now();
+      if (currentStep === 2) {
+        step2EntryTimeRef.current = Date.now();
         setFieldErrors(prev => ({
           ...prev,
-          platform: false,
-          negativeReviewsNeedRemoving: false,
-          budgetPerRemoval: false,
+          creditScore: false,
+          negativeItems: false,
+          hasReport: false,
         }));
-        setStep3SubmitAttempted(false);
+        setStep2SubmitAttempted(false);
         setStatus("idle");
         setStatusMessage("");
-      } else if (previousStepRef.current === 3) {
-        step3EntryTimeRef.current = null;
-        setStep3SubmitAttempted(false);
+      } else if (previousStepRef.current === 2) {
+        step2EntryTimeRef.current = null;
+        setStep2SubmitAttempted(false);
       }
     }
 
@@ -263,14 +257,14 @@ export function Hero({
     };
   }, [scrollFormIntoView]);
 
-  const isStep3Field = (field: HeroFieldKey): field is Step3Field =>
-    STEP3_FIELDS.includes(field as Step3Field);
+  const isStep2Field = (field: HeroFieldKey): field is Step2Field =>
+    STEP2_FIELDS.includes(field as Step2Field);
 
   const getInputClass = (field: keyof HeroFormState, extra = "") => {
     const base = "hero-input";
 
-    if (isStep3Field(field)) {
-      const showError = step3SubmitAttempted && Boolean(fieldErrors[field]);
+    if (isStep2Field(field)) {
+      const showError = step2SubmitAttempted && Boolean(fieldErrors[field]);
       const stateClass = showError ? " hero-input-error" : " hero-input-default";
       return `${base}${stateClass}${extra ? ` ${extra}` : ""}`;
     }
@@ -282,13 +276,13 @@ export function Hero({
 
   const markStepErrors = (
     fields: Array<keyof HeroFormState>,
-    options: { includeStep3?: boolean } = {}
+    options: { includeStep2?: boolean } = {}
   ) => {
-    const { includeStep3 = false } = options;
+    const { includeStep2 = false } = options;
     const stepErrors: Partial<Record<keyof HeroFormState, boolean>> = {};
 
     fields.forEach(field => {
-      if (isStep3Field(field) && !includeStep3) {
+      if (isStep2Field(field) && !includeStep2) {
         stepErrors[field] = false;
         return;
       }
@@ -300,8 +294,6 @@ export function Hero({
         isValid = isValidEmail(formData.email);
       } else if (field === "phone") {
         isValid = formData.phone.length === 10 && /^[2-9]/.test(formData.phone);
-      } else if (field === "companyAddress") {
-        isValid = /^\d{5}$/.test(formData.companyAddress);
       }
 
       stepErrors[field] = !isValid;
@@ -313,7 +305,7 @@ export function Hero({
 
   const highlightFieldsForButton = (
     buttonId: HeroButtonId,
-    options: { includeStep3?: boolean } = {}
+    options: { includeStep2?: boolean } = {}
   ) => {
     const fields = BUTTON_VALIDATION_FIELDS[buttonId];
     if (fields.length === 0) {
@@ -356,14 +348,6 @@ export function Hero({
       let digitsOnly = value.replace(/\D/g, "");
       if (digitsOnly.startsWith("1")) digitsOnly = digitsOnly.slice(1);
       value = digitsOnly.slice(0, 10);
-    } else if (name === "companyAddress") {
-      const digitsOnly = value.replace(/\D/g, "").slice(0, 5);
-      value = digitsOnly;
-    } else if (
-      name === "businessLocations" ||
-      name === "negativeReviewsNeedRemoving"
-    ) {
-      value = value.replace(/\D/g, "");
     }
 
     if (status !== "idle") {
@@ -384,10 +368,6 @@ export function Hero({
         return value.replace(/\D/g, "").length === 10;
       }
 
-      if (fieldKey === "companyAddress") {
-        return /^\d{5}$/.test(value);
-      }
-
       return value.trim().length > 0;
     })();
 
@@ -406,78 +386,49 @@ export function Hero({
     setStatus("idle");
     setStatusMessage("");
 
-    if (currentStep <= 2) {
-      const hasStep3Errors =
-        fieldErrors.platform || fieldErrors.negativeReviewsNeedRemoving || fieldErrors.budgetPerRemoval;
+    if (currentStep === 1) {
+      const hasStep2Errors =
+        fieldErrors.creditScore || fieldErrors.negativeItems || fieldErrors.hasReport;
 
-      if (hasStep3Errors || step3SubmitAttempted) {
+      if (hasStep2Errors || step2SubmitAttempted) {
         setFieldErrors(prev => ({
           ...prev,
-          platform: false,
-          negativeReviewsNeedRemoving: false,
-          budgetPerRemoval: false,
+          creditScore: false,
+          negativeItems: false,
+          hasReport: false,
         }));
-        setStep3SubmitAttempted(false);
+        setStep2SubmitAttempted(false);
       }
     }
 
-    switch (currentStep) {
-      case 1: {
-        const stepErrors = highlightFieldsForButton("continueStep1");
-        const requiredFields = BUTTON_VALIDATION_FIELDS.continueStep1;
-        const missingRequired = requiredFields.some(field => formData[field].trim().length === 0);
-        const invalidEmail = formData.email ? !isValidEmail(formData.email) : false;
-        const invalidPhone = formData.phone ? (formData.phone.length !== 10 || !/^[2-9]/.test(formData.phone)) : false;
+    if (currentStep === 1) {
+      const stepErrors = highlightFieldsForButton("continueStep1");
+      const requiredFields = BUTTON_VALIDATION_FIELDS.continueStep1;
+      const missingRequired = requiredFields.some(field => formData[field].trim().length === 0);
+      const invalidEmail = formData.email ? !isValidEmail(formData.email) : false;
+      const invalidPhone = formData.phone ? (formData.phone.length !== 10 || !/^[2-9]/.test(formData.phone)) : false;
 
-        if (missingRequired) {
-          setStatus("error");
-          setStatusMessage("Please provide your contact details before continuing.");
-          return;
-        }
-
-        if (invalidEmail) {
-          setStatus("error");
-          setStatusMessage("Please enter a valid email address.");
-          return;
-        }
-
-        if (invalidPhone) {
-          setStatus("error");
-          setStatusMessage("Please enter a valid 10-digit US/Canada phone number.");
-          return;
-        }
-
-        if (Object.values(stepErrors).some(Boolean)) {
-          return;
-        }
-        break;
-      }
-      case 2: {
-        const stepErrors = highlightFieldsForButton("continueStep2");
-
-        if (Object.values(stepErrors).some(Boolean)) {
-          if (stepErrors.companyAddress) {
-            setStatus("error");
-            setStatusMessage(
-              formData.companyAddress.trim().length === 0
-                ? "Please enter your company postal code."
-                : "Company postal codes must be exactly 5 digits."
-            );
-            return;
-          }
-
-          setStatus("error");
-          setStatusMessage("Please complete your business information before continuing.");
-          return;
-        }
-        break;
-      }
-      case 3: {
-        // There is no "next" action beyond step 3; defer validation to handleSubmit.
+      if (missingRequired) {
+        setStatus("error");
+        setStatusMessage("Please provide your contact details before continuing.");
         return;
       }
-      default:
-        break;
+
+      if (invalidEmail) {
+        setStatus("error");
+        setStatusMessage("Please enter a valid email address.");
+        return;
+      }
+
+      if (invalidPhone) {
+        setStatus("error");
+        setStatusMessage("Please enter a valid 10-digit US/Canada phone number.");
+        return;
+      }
+
+      if (Object.values(stepErrors).some(Boolean)) {
+        return;
+      }
     }
 
     if (currentStep < totalSteps) {
@@ -491,21 +442,16 @@ export function Hero({
     }
     setStatus("idle");
     setStatusMessage("");
-    if (currentStep === 3) {
+    if (currentStep === 2) {
       setFieldErrors(prev => ({
         ...prev,
-        platform: false,
-        negativeReviewsNeedRemoving: false,
-        budgetPerRemoval: false,
+        creditScore: false,
+        negativeItems: false,
+        hasReport: false,
       }));
-      setStep3SubmitAttempted(false);
+      setStep2SubmitAttempted(false);
     }
-    setCurrentStep(step => {
-      if (step > 1) {
-        return step - 1;
-      }
-      return step;
-    });
+    setCurrentStep(step => (step > 1 ? step - 1 : step));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -519,42 +465,42 @@ export function Hero({
       return;
     }
 
-    const entryTimestamp = step3EntryTimeRef.current;
-    if (entryTimestamp && Date.now() - entryTimestamp < STEP3_DOUBLE_SUBMIT_GUARD_MS) {
-      step3EntryTimeRef.current = null;
-      if (step3SubmitAttempted) {
-        setStep3SubmitAttempted(false);
+    const entryTimestamp = step2EntryTimeRef.current;
+    if (entryTimestamp && Date.now() - entryTimestamp < STEP2_DOUBLE_SUBMIT_GUARD_MS) {
+      step2EntryTimeRef.current = null;
+      if (step2SubmitAttempted) {
+        setStep2SubmitAttempted(false);
       }
       setStatus("idle");
       setStatusMessage("");
       return;
     }
 
-    step3EntryTimeRef.current = null;
+    step2EntryTimeRef.current = null;
     setStatus("idle");
     setStatusMessage("");
-    setStep3SubmitAttempted(true);
+    setStep2SubmitAttempted(true);
 
-    const submitErrors = highlightFieldsForButton("submit", { includeStep3: true });
-    const missingPlatform = submitErrors.platform ?? false;
-    const missingNegativeReviews = submitErrors.negativeReviewsNeedRemoving ?? false;
-    const missingBudgetPerRemoval = submitErrors.budgetPerRemoval ?? false;
+    const submitErrors = highlightFieldsForButton("submit", { includeStep2: true });
+    const missingCreditScore = submitErrors.creditScore ?? false;
+    const missingNegativeItems = submitErrors.negativeItems ?? false;
+    const missingHasReport = submitErrors.hasReport ?? false;
 
-    if (missingPlatform) {
+    if (missingCreditScore) {
       setStatus("error");
-      setStatusMessage("Please select the platform you need help with.");
+      setStatusMessage("Please select your average credit score.");
       return;
     }
 
-    if (missingNegativeReviews) {
+    if (missingNegativeItems) {
       setStatus("error");
-      setStatusMessage("Tell us how many reviews you need removed.");
+      setStatusMessage("Please tell us how many negative items are on your credit report.");
       return;
     }
 
-    if (missingBudgetPerRemoval) {
+    if (missingHasReport) {
       setStatus("error");
-      setStatusMessage("Please enter your budget per removal.");
+      setStatusMessage("Please let us know if you have a copy of your most recent credit report.");
       return;
     }
 
@@ -577,18 +523,13 @@ export function Hero({
       formData.firstName ||
       formData.email;
 
-    const businessLocations = formData.businessLocations.trim();
-    const negativeReviewsNeedRemoving = formData.negativeReviewsNeedRemoving.trim();
-    const budgetPerRemoval = formData.budgetPerRemoval.trim();
-    const companyAddress = formData.companyAddress.trim();
+    const address = formData.address.trim();
 
     const problemDetails = [
-      `Company: ${formData.companyName}`,
-      `Company Address: ${companyAddress}`,
-      `Business Locations: ${businessLocations}`,
-      `Negative Reviews Need Removing: ${negativeReviewsNeedRemoving}`,
-      `Platform: ${formData.platform}`,
-      budgetPerRemoval ? `Budget Per Removal: ${budgetPerRemoval}` : "",
+      `Address: ${address}`,
+      `Credit Score Range: ${formData.creditScore}`,
+      `Negative Items: ${formData.negativeItems}`,
+      `Has Credit Report: ${formData.hasReport}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -611,12 +552,10 @@ export function Hero({
           metadata: {
             firstName: formData.firstName,
             lastName: formData.lastName,
-            companyName: formData.companyName,
-            companyAddress,
-            businessLocations,
-            negativeReviewsNeedRemoving,
-            budgetPerRemoval,
-            platform: formData.platform,
+            companyAddress: address,
+            creditScore: formData.creditScore,
+            negativeItems: formData.negativeItems,
+            hasCreditReport: formData.hasReport,
           },
         }),
       });
@@ -631,7 +570,7 @@ export function Hero({
       setFormData({ ...initialFormState });
       setCurrentStep(1);
       setFieldErrors(createInitialErrorState());
-    setStep3SubmitAttempted(false);
+    setStep2SubmitAttempted(false);
       leadEventTrackedRef.current = false;
 
       if (typeof window !== "undefined") {
@@ -869,138 +808,95 @@ export function Hero({
                             required
                           />
                         </div>
-                      </div>
-                    )}
-
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <h4 className="text-lg text-gray-900 mb-4">Business Information</h4>
                         <div>
                           <label
-                            htmlFor={INPUT_IDS.companyName}
+                            htmlFor={INPUT_IDS.address}
                             className="block text-gray-700 mb-1.5 text-sm lg:text-base"
                           >
-                            Company Name *
+                            Address *
                           </label>
                           <input
-                            id={INPUT_IDS.companyName}
+                            id={INPUT_IDS.address}
                             type="text"
-                            name="companyName"
-                            value={formData.companyName}
+                            name="address"
+                            value={formData.address}
                             onChange={handleInputChange}
-                            className={getInputClass("companyName")}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={INPUT_IDS.companyAddress}
-                            className="block text-gray-700 mb-1.5 text-sm lg:text-base"
-                          >
-                            Company Postal Code *
-                          </label>
-                          <input
-                            id={INPUT_IDS.companyAddress}
-                            type="text"
-                            name="companyAddress"
-                            value={formData.companyAddress}
-                            onChange={handleInputChange}
-                            className={getInputClass("companyAddress")}
-                            inputMode="numeric"
-                            maxLength={5}
-                            pattern="\d{5}"
-                            placeholder="e.g. 12345"
-                            title="Enter a 5-digit postal code"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={INPUT_IDS.businessLocations}
-                            className="block text-gray-700 mb-1.5 text-sm lg:text-base"
-                          >
-                            How many business locations do you have? *
-                          </label>
-                          <input
-                            id={INPUT_IDS.businessLocations}
-                            type="number"
-                            min={0}
-                            name="businessLocations"
-                            value={formData.businessLocations}
-                            onChange={handleInputChange}
-                            className={getInputClass("businessLocations")}
-                        
+                            className={getInputClass("address")}
+                            placeholder="123 Main St, City, State"
+                            autoComplete="street-address"
                             required
                           />
                         </div>
                       </div>
                     )}
 
-                    {currentStep === 3 && (
+                    {currentStep === 2 && (
                       <div className="space-y-4">
-                        <h4 className="text-lg text-gray-900 mb-4">Review Information</h4>
+                        <h4 className="text-lg text-gray-900 mb-4">About Your Credit</h4>
                         <div>
                           <label
-                            htmlFor={INPUT_IDS.platform}
+                            htmlFor={INPUT_IDS.creditScore}
                             className="block text-gray-700 mb-1.5 text-sm lg:text-base"
                           >
-                            Platform you want reviews removed from *
+                            What is your average credit score? *
                           </label>
                           <select
-                            id={INPUT_IDS.platform}
-                            name="platform"
-                            value={formData.platform}
+                            id={INPUT_IDS.creditScore}
+                            name="creditScore"
+                            value={formData.creditScore}
                             onChange={handleInputChange}
-                            className={getInputClass("platform")}
+                            className={getInputClass("creditScore")}
                             required
                           >
-                            <option value="">Select a platform</option>
-                            <option value="google">Google</option>
-                            <option value="yelp">Yelp</option>
-                            <option value="facebook">Facebook</option>
-                            <option value="trustpilot">Trustpilot</option>
-                            <option value="bbb">Better Business Bureau</option>
-                            <option value="glassdoor">Glassdoor</option>
-                            <option value="tripadvisor">Tripadvisor</option>
-                            <option value="other">Other</option>
+                            <option value="">Select…</option>
+                            <option value="400-500">400 to 500</option>
+                            <option value="501-600">501 to 600</option>
+                            <option value="601-700">601 to 700</option>
+                            <option value="701-800+">701 to 800+</option>
+                            <option value="unknown">I don't know</option>
                           </select>
                         </div>
                         <div>
                           <label
-                            htmlFor={INPUT_IDS.negativeReviewsNeedRemoving}
+                            htmlFor={INPUT_IDS.negativeItems}
                             className="block text-gray-700 mb-1.5 text-sm lg:text-base"
                           >
-                            How many negative reviews need removing? *
+                            How many negative items do you have on your credit report? *
                           </label>
-                          <input
-                            id={INPUT_IDS.negativeReviewsNeedRemoving}
-                            type="number"
-                            min={0}
-                            name="negativeReviewsNeedRemoving"
-                            value={formData.negativeReviewsNeedRemoving}
+                          <select
+                            id={INPUT_IDS.negativeItems}
+                            name="negativeItems"
+                            value={formData.negativeItems}
                             onChange={handleInputChange}
-                            className={getInputClass("negativeReviewsNeedRemoving")}
+                            className={getInputClass("negativeItems")}
                             required
-                          />
+                          >
+                            <option value="">Select…</option>
+                            <option value="1-5">1 to 5</option>
+                            <option value="6-9">6 to 9</option>
+                            <option value="10+">10+</option>
+                            <option value="unknown">I don't know</option>
+                          </select>
                         </div>
                         <div>
                           <label
-                            htmlFor={INPUT_IDS.budgetPerRemoval}
-                            className="block text-gray-700 mb-1.5 text-sm leading-snug lg:text-base"
+                            htmlFor={INPUT_IDS.hasReport}
+                            className="block text-gray-700 mb-1.5 text-sm lg:text-base"
                           >
-                            What is your budget per removal? *
+                            Do you have a copy of your most recent credit report? *
                           </label>
-                          <input
-                            id={INPUT_IDS.budgetPerRemoval}
-                            type="text"
-                            inputMode="decimal"
-                            name="budgetPerRemoval"
-                            value={formData.budgetPerRemoval}
+                          <select
+                            id={INPUT_IDS.hasReport}
+                            name="hasReport"
+                            value={formData.hasReport}
                             onChange={handleInputChange}
-                            className={getInputClass("budgetPerRemoval")}
-                            placeholder="Enter your budget per removal"
+                            className={getInputClass("hasReport")}
                             required
-                          />
+                          >
+                            <option value="">Select…</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                          </select>
                         </div>
                         <div className="space-y-3 sm:space-y-3.5">
                           <div className="rounded-lg border border-blue-200 bg-blue-50 p-2">
@@ -1012,7 +908,7 @@ export function Hero({
                           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
                             <p className="flex items-center gap-1.5 leading-tight text-sm leading-relaxed text-emerald-800 sm:gap-2">
                               <Check className="mt-0.5 mr-2 h-4 w-4 shrink-0" />
-                              <span>Price match guarantee: We'll beat any competitor's pricing.</span>
+                              <span>Free consultation. No credit card required.</span>
                             </p>
                           </div>
                         </div>
@@ -1034,7 +930,7 @@ export function Hero({
                       {currentStep < totalSteps ? (
                         <button
                           type="button"
-                          id={currentStep === 1 ? BUTTON_IDS.continueStep1 : BUTTON_IDS.continueStep2}
+                          id={BUTTON_IDS.continueStep1}
                           onClick={handleNext}
                           className="ml-auto inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg text-base disabled:opacity-70 disabled:cursor-not-allowed"
                           disabled={status === "loading"}

@@ -43,10 +43,10 @@ export function CaseStudies() {
   }>("homepage", "caseStudies");
 
   const caseStudy: TabData["content"] = {
-    title: cms?.title ?? "How ReviewCleaners Helped a Restaurant Bounce Back",
+    title: cms?.title ?? "How creditremovers Helped a Restaurant Bounce Back",
     description: cms?.description ?? [
       "A local restaurant was hit by a wave of unfair negative reviews, causing a drop in customer trust and foot traffic.",
-      "ReviewCleaners stepped in, verified and removed the false reviews, and guided the owner on best practices for future reputation management.",
+      "creditremovers stepped in, verified and removed the false reviews, and guided the owner on best practices for future reputation management.",
       "Within weeks, the restaurant saw a surge in positive feedback and regained its loyal customer base.",
     ],
     stats: (cms?.stats ?? [

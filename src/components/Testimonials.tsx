@@ -13,9 +13,9 @@ export function Testimonials({ logos }: TestimonialsProps) {
   }>("homepage", "testimonials");
 
   const testimonials = cms?.testimonials ?? [
-    { name: "Sarah Johnson", role: "Restaurant Owner", rating: 5, text: "reviewcleaners.com helped remove a false review that was costing us customers. Their team was professional, fast, and delivered results. Highly recommend!" },
+    { name: "Sarah Johnson", role: "Restaurant Owner", rating: 5, text: "creditremovers.com helped remove a false review that was costing us customers. Their team was professional, fast, and delivered results. Highly recommend!" },
     { name: "Michael Chen", role: "Medical Practice", rating: 5, text: "As a healthcare provider, our reputation is everything. They removed defamatory content quickly and discreetly. Outstanding service!" },
-    { name: "Amanda Rodriguez", role: "Law Firm Partner", rating: 5, text: "We've tried other services before, but reviewcleaners.com actually delivered. Our negative reviews were removed permanently. Worth every penny." },
+    { name: "Amanda Rodriguez", role: "Law Firm Partner", rating: 5, text: "We've tried other services before, but creditremovers.com actually delivered. Our negative reviews were removed permanently. Worth every penny." },
   ];
 
   return (

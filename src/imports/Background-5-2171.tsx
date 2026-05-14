@@ -155,7 +155,7 @@ function Tabpanel() {
         <p className="leading-[25px]">Restoring Trust for a Law Firm</p>
       </div>
       <div className="absolute flex flex-col font-['Lato:Regular',sans-serif] h-[68.19px] justify-center leading-[25.6px] left-[30px] not-italic text-[#4d4d4d] text-[14px] top-[143.09px] translate-y-[-50%] w-[488.991px]">
-        <p className="mb-0">For law firms, one false review can cost thousands in lost revenue. reviewcleaners.com’s</p>
+        <p className="mb-0">For law firms, one false review can cost thousands in lost revenue. creditremovers.com’s</p>
         <p className="mb-0">proven, compliant removal process helped this firm reclaim their reputation,</p>
         <p>improve visibility, and get back to doing what they do best—serving their clients.</p>
       </div>

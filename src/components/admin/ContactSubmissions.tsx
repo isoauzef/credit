@@ -12,6 +12,32 @@ function formatDate(iso: string) {
   }
 }
 
+const CREDIT_SCORE_LABELS: Record<string, string> = {
+  "400-500": "400 – 500",
+  "501-600": "501 – 600",
+  "601-700": "601 – 700",
+  "701-800+": "701 – 800+",
+  unknown: "Unknown",
+};
+
+const NEGATIVE_ITEM_LABELS: Record<string, string> = {
+  "1-5": "1 – 5",
+  "6-9": "6 – 9",
+  "10+": "10+",
+  unknown: "Unknown",
+};
+
+const HAS_REPORT_LABELS: Record<string, string> = {
+  yes: "Yes",
+  no: "No",
+};
+
+function getMeta(s: ContactSubmission, key: string): string {
+  const m = s.metadata as Record<string, unknown> | null | undefined;
+  const v = m && typeof m === "object" ? m[key] : undefined;
+  return typeof v === "string" ? v : "";
+}
+
 export default function ContactSubmissions() {
   const { data, loading, reload, mutate } = useAdminApi<ContactSubmission[]>(
     "/api/admin/contact-submissions"
@@ -52,8 +78,8 @@ export default function ContactSubmissions() {
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Name</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Phone</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-400">Company</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-400">Platform</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-400">Address</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-400">Credit Score</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
               </tr>
             </thead>
@@ -65,7 +91,11 @@ export default function ContactSubmissions() {
                   </td>
                 </tr>
               ) : (
-                data.map((s) => (
+                data.map((s) => {
+                  const creditScore = getMeta(s, "creditScore");
+                  const negativeItems = getMeta(s, "negativeItems");
+                  const hasReport = getMeta(s, "hasCreditReport");
+                  return (
                   <>
                     <tr
                       key={s.id}
@@ -80,8 +110,10 @@ export default function ContactSubmissions() {
                       </td>
                       <td className="px-4 py-3 text-slate-300">{s.email}</td>
                       <td className="px-4 py-3 text-slate-300">{s.phone}</td>
-                      <td className="px-4 py-3 text-slate-300">{s.companyName || "—"}</td>
-                      <td className="px-4 py-3 text-slate-300">{s.platform || "—"}</td>
+                      <td className="px-4 py-3 text-slate-300">{s.companyAddress || "—"}</td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {creditScore ? CREDIT_SCORE_LABELS[creditScore] || creditScore : "—"}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {expandedId === s.id ? (
@@ -106,27 +138,35 @@ export default function ContactSubmissions() {
                       <tr key={`${s.id}-detail`}>
                         <td colSpan={7} className="px-6 py-4 bg-slate-800/30">
                           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-                            {s.businessLocations && (
-                              <Detail label="Business Locations" value={s.businessLocations} />
-                            )}
-                            {s.negativeReviewsNeedRemoving && (
-                              <Detail
-                                label="Reviews to Remove"
-                                value={s.negativeReviewsNeedRemoving}
-                              />
-                            )}
-                            {s.budgetPerRemoval && (
-                              <Detail label="Budget / Removal" value={s.budgetPerRemoval} />
-                            )}
                             {s.companyAddress && (
                               <Detail label="Address" value={s.companyAddress} />
                             )}
+                            {creditScore && (
+                              <Detail
+                                label="Credit Score"
+                                value={CREDIT_SCORE_LABELS[creditScore] || creditScore}
+                              />
+                            )}
+                            {negativeItems && (
+                              <Detail
+                                label="Negative Items"
+                                value={NEGATIVE_ITEM_LABELS[negativeItems] || negativeItems}
+                              />
+                            )}
+                            {hasReport && (
+                              <Detail
+                                label="Has Credit Report"
+                                value={HAS_REPORT_LABELS[hasReport] || hasReport}
+                              />
+                            )}
+                            {s.source && <Detail label="Source" value={s.source} />}
                           </div>
                         </td>
                       </tr>
                     )}
                   </>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

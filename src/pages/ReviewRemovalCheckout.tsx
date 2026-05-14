@@ -1303,7 +1303,7 @@ function SubmissionForm() {
                           {cms?.agreement1
                             ? cms.agreement1.replace(/\{price\}/g, `$${pricePerReview}`)
                             : <>
-                                I agree to Review Cleaners'{" "}
+                                I agree to Credit Removers'{" "}
                                 <Link
                                   to="/terms-of-service"
                                   className="text-[#1e5a8a] underline underline-offset-2"

@@ -81,7 +81,7 @@ async function sendSubmissionEmail(submission) {
     attachments,
     headers: {
       "X-Entity-Ref-ID": submission.submittedAt || Date.now().toString(),
-      "X-ReviewCleaners-Preview": previewText,
+      "X-creditremovers-Preview": previewText,
     },
   });
 

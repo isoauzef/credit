@@ -1,9 +1,9 @@
 /**
- * CRM API client for ReviewCleaners CRM (https://crm.reviewcleaners.com)
+ * CRM API client for creditremovers CRM (https://crm.creditremovers.com)
  *
  * Configuration is loaded from the Settings table:
  *   - crm_api_key   (REQUIRED — Bearer / API_KEY header value)
- *   - crm_base_url  (optional — defaults to https://crm.reviewcleaners.com)
+ *   - crm_base_url  (optional — defaults to https://crm.creditremovers.com)
  *
  * All functions throw on non-2xx responses; callers should wrap in try/catch
  * and log the failure rather than aborting the user-facing checkout flow.
@@ -13,7 +13,7 @@ function getConfig() {
   const { getCrmConfig } = require("./runtime");
   const cfg = getCrmConfig() || {};
   const apiKey = cfg.crm_api_key || null;
-  const baseUrl = (cfg.crm_base_url || "https://crm.reviewcleaners.com").replace(/\/+$/, "");
+  const baseUrl = (cfg.crm_base_url || "https://crm.creditremovers.com").replace(/\/+$/, "");
   return { apiKey, baseUrl };
 }
 

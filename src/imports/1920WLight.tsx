@@ -2769,7 +2769,7 @@ function Container18() {
       <div className="absolute flex flex-col font-['Inter:Regular',sans-serif] font-normal h-[64.5px] justify-center leading-[21.75px] left-0 not-italic text-[15px] text-black top-[32.25px] translate-y-[-50%] w-[293.37px]">
         <p className="mb-0">Professional, courteous, and relentless</p>
         <p className="mb-0">pursuit of truth. Thank you to the hard</p>
-        <p>working men and women of reviewcleaners.com</p>
+        <p>working men and women of creditremovers.com</p>
       </div>
     </div>
   );
@@ -3543,7 +3543,7 @@ function Tabpanel() {
         <p className="leading-[25px]">Restoring Trust for a Law Firm</p>
       </div>
       <div className="absolute flex flex-col font-['Lato:Regular',sans-serif] h-[68.19px] justify-center leading-[25.6px] left-[30px] not-italic text-[#4d4d4d] text-[14px] top-[143.09px] translate-y-[-50%] w-[488.991px]">
-        <p className="mb-0">For law firms, one false review can cost thousands in lost revenue. reviewcleaners.com’s</p>
+        <p className="mb-0">For law firms, one false review can cost thousands in lost revenue. creditremovers.com’s</p>
         <p className="mb-0">proven, compliant removal process helped this firm reclaim their reputation,</p>
         <p>improve visibility, and get back to doing what they do best—serving their clients.</p>
       </div>
@@ -4007,7 +4007,7 @@ function Main() {
       <Button6 />
       <Background11 />
       <div className="absolute flex flex-col font-['Lato:Bold',sans-serif] h-[35px] justify-center leading-[0] left-[400px] not-italic text-[#346fb2] text-[35px] top-[6004.59px] translate-y-[-50%] w-[399.415px]">
-        <p className="leading-[35px]">reviewcleaners.com News Features</p>
+        <p className="leading-[35px]">creditremovers.com News Features</p>
       </div>
       <RegionImageCarousel />
       <div className="absolute flex flex-col font-['Lato:Bold',sans-serif] h-[35px] justify-center leading-[0] left-[400px] not-italic text-[#346fb2] text-[35px] top-[6229.19px] translate-y-[-50%] w-[319.124px]">
@@ -4166,7 +4166,7 @@ function Link20() {
   return (
     <div className="absolute h-[16px] right-[37px] top-[74px] w-[100.83px]" data-name="Link">
       <div className="absolute flex flex-col font-['DM_Sans:9pt_Regular',sans-serif] font-normal h-[16px] justify-center leading-[0] right-[-0.36px] text-[12px] text-black text-right top-[8px] tracking-[0.2px] translate-y-[-50%] w-[101.186px]" style={{ fontVariationSettings: "'opsz' 9" }}>
-        <p className="leading-[12px]">support@reviewcleaners.com</p>
+        <p className="leading-[12px]">support@creditremovers.com</p>
       </div>
     </div>
   );
@@ -4742,7 +4742,7 @@ function Container35() {
 
 function EraseComLogo() {
   return (
-    <div className="absolute h-[38.13px] left-0 right-[25%] top-0" data-name="reviewcleaners.com Logo">
+    <div className="absolute h-[38.13px] left-0 right-[25%] top-0" data-name="creditremovers.com Logo">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <img alt="" className="absolute left-0 max-w-none size-full top-0" src={imgEraseComLogo} />
       </div>

@@ -2,7 +2,7 @@
   "subjectTemplate": "You Will Be Receiving A Phone Call Soon For A Free Audit On Your Negative Reviews",
   "previewText": "Full-service review removal with 24/7 monitoring for $200/mo.",
   "brand": {
-    "name": "Review Cleaners",
+    "name": "Credit Removers",
     "primaryColor": "#346fb5",
     "background": "#f0f4fb",
     "cardBackground": "#ffffff",
@@ -12,7 +12,7 @@
     "logoAttachmentType": "image/svg+xml"
   },
   "hero": {
-    "heading": "ReviewCleaners.com",
+    "heading": "creditremovers.com",
     "subheading": "Reputation Management Service",
     "greetingPrefix": "Hello",
     "introParagraphs": [
@@ -26,7 +26,7 @@
     "fullName": "Zack N.",
     "title": "Reputation Management Consultant",
     "directPhone": "818-200-7915",
-    "email": "zack@reviewcleaners.com",
+    "email": "zack@creditremovers.com",
     "hours": "Mon-Friday - 8am to 3pm PST"
   },
   "serviceAssurances": [
@@ -45,15 +45,15 @@
   "signature": "Zack N. · Reputation Management Consultant",
   "footer": {
     "disclaimer": "Confidentiality Note: This e-mail and any attachments are confidential and may be protected by legal privilege. If you received this in error, please let us know and delete it.",
-    "address": "ReviewCleaners · Remote · United States",
+    "address": "creditremovers · Remote · United States",
     "unsubscribeText": "Unsubscribe",
-    "unsubscribeUrl": "https://reviewcleaners.com/unsubscribe"
+    "unsubscribeUrl": "https://creditremovers.com/unsubscribe"
   },
   "socialLinks": [
-    { "label": "Facebook", "href": "https://facebook.com/reviewcleaners" },
-    { "label": "LinkedIn", "href": "https://linkedin.com/company/reviewcleaners" },
-    { "label": "YouTube", "href": "https://youtube.com/@reviewcleaners" },
-    { "label": "Instagram", "href": "https://instagram.com/reviewcleaners" }
+    { "label": "Facebook", "href": "https://facebook.com/creditremovers" },
+    { "label": "LinkedIn", "href": "https://linkedin.com/company/creditremovers" },
+    { "label": "YouTube", "href": "https://youtube.com/@creditremovers" },
+    { "label": "Instagram", "href": "https://instagram.com/creditremovers" }
   ]
 }
 

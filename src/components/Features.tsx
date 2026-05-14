@@ -40,7 +40,7 @@ export function Features({ background, rectangleIcons, svgPaths }: FeaturesProps
         {/* Section Header */}
         <div className="text-center mb-12 lg:mb-16">
           <h2 className="text-white text-3xl lg:text-4xl mb-4">
-            {cms?.heading ?? "Why Choose reviewcleaners.com?"}
+            {cms?.heading ?? "Why Choose creditremovers.com?"}
           </h2>
           <p className="text-white/90 text-lg lg:text-xl max-w-2xl mx-auto text-[20px]">
             {cms?.subheading ?? "We're the trusted leader in review removal with a proven track record"}

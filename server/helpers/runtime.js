@@ -97,7 +97,7 @@ function getGooglePlacesKey() {
   return _googlePlacesKey;
 }
 
-// ── CRM (ReviewCleaners CRM) ────────────────────────────────────
+// ── CRM (creditremovers CRM) ────────────────────────────────────
 let _crmConfig = {};
 
 async function refreshCrm() {

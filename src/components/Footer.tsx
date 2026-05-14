@@ -52,8 +52,8 @@ export function Footer({ svgPaths }: FooterProps) {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Mail className="w-5 h-5 text-white/60 flex-shrink-0 mt-1" />
-                <a href={`mailto:${cms?.contactEmail ?? "support@reviewcleaners.com"}`} className="text-white/80 hover:text-white transition-colors text-base lg:text-lg">
-                  {cms?.contactEmail ?? "support@reviewcleaners.com"}
+                <a href={`mailto:${cms?.contactEmail ?? "support@creditremovers.com"}`} className="text-white/80 hover:text-white transition-colors text-base lg:text-lg">
+                  {cms?.contactEmail ?? "support@creditremovers.com"}
                 </a>
               </li>
               <li className="flex items-start gap-3">
