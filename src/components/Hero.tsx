@@ -224,42 +224,6 @@ export function Hero({
     };
   }, [scrollFormIntoView]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) {
-      return;
-    }
-
-    const viewport = window.visualViewport;
-    viewportHeightRef.current = viewport.height;
-
-    const handleResize = () => {
-      if (window.innerWidth > MOBILE_SCROLL_MAX_WIDTH) {
-        viewportHeightRef.current = viewport.height;
-        return;
-      }
-
-      if (
-        formInteractionRef.current &&
-        viewportHeightRef.current !== null &&
-        viewport.height > viewportHeightRef.current
-      ) {
-        const active = typeof document !== "undefined" ? document.activeElement : null;
-        const container = formContainerRef.current;
-        const focusInsideForm = !!(active && container && container.contains(active));
-        if (focusInsideForm) {
-          scrollFormIntoView(120);
-        }
-      }
-
-      viewportHeightRef.current = viewport.height;
-    };
-
-    viewport.addEventListener("resize", handleResize);
-    return () => {
-      viewport.removeEventListener("resize", handleResize);
-    };
-  }, [scrollFormIntoView]);
-
   const isStep2Field = (field: HeroFieldKey): field is Step2Field =>
     STEP2_FIELDS.includes(field as Step2Field);
 
