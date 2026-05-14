@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { useSiteSettings } from "../hooks/useSiteSettings";
 
 export function Navigation({ minimal = false }: { minimal?: boolean }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const settings = useSiteSettings();
+  const logoSrc = settings.site_logo || "/logo.svg";
 
   return (
     <nav className="absolute top-0 left-0 right-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Wordmark */}
-          <a href="/" className="flex-shrink-0 inline-flex items-center" aria-label="Review Cleaners home">
+          <a href="/" className="flex-shrink-0 inline-flex items-center" aria-label="Credit Removers home">
             <img
-              src="/logo.svg"
-              alt="Review Cleaners"
+              src={logoSrc}
+              alt="Credit Removers"
               className="h-10 w-auto drop-shadow-sm"
               loading="lazy"
               decoding="async"

@@ -1,6 +1,7 @@
 import { Mail, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePageContent } from "../hooks/usePageContent";
+import { useSiteSettings } from "../hooks/useSiteSettings";
 
 interface FooterProps {
   svgPaths: any;
@@ -8,6 +9,8 @@ interface FooterProps {
 
 export function Footer({ svgPaths }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const settings = useSiteSettings();
+  const logoSrc = settings.site_logo || "/logo.svg";
 
   const cms = usePageContent<{
     description?: string;
@@ -29,10 +32,10 @@ export function Footer({ svgPaths }: FooterProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
           <div className="space-y-6">
-            <a href="/" className="inline-flex items-center" aria-label="Review Cleaners home">
+            <a href="/" className="inline-flex items-center" aria-label="Credit Removers home">
               <img
-                src="/logo.svg"
-                alt="Review Cleaners"
+                src={logoSrc}
+                alt="Credit Removers"
                 className="h-10 w-auto drop-shadow-sm"
                 loading="lazy"
                 decoding="async"
