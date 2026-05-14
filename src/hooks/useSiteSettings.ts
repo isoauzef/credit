@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 
 type Settings = Record<string, string>;
 
-let cache: Settings | null = null;
+declare global {
+  interface Window {
+    __SITE_SETTINGS__?: Settings;
+  }
+}
+
+let cache: Settings | null =
+  (typeof window !== "undefined" && window.__SITE_SETTINGS__) || null;
 let inflight: Promise<Settings> | null = null;
 
 function fetchSettings(): Promise<Settings> {
@@ -18,6 +25,7 @@ function fetchSettings(): Promise<Settings> {
 export function useSiteSettings(): Settings {
   const [data, setData] = useState<Settings>(() => cache ?? {});
   useEffect(() => {
+    if (cache) return;
     let cancelled = false;
     fetchSettings().then((s) => { if (!cancelled) setData(s); });
     return () => { cancelled = true; };

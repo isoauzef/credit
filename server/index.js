@@ -538,12 +538,43 @@ app.get("/api/google/reviews/:id", async (req, res) => {
 // ── Admin API routes ────────────────────────────────────────────
 app.use("/api/admin", adminRoutes);
 
+// ── Serve uploaded files (logos, favicons, etc.) ────────────────
+const uploadsDir = path.join(__dirname, "..", "public", "uploads");
+app.use("/uploads", express.static(uploadsDir, { fallthrough: true }));
+
 // ── Static files + SPA fallback ─────────────────────────────────
 if (fs.existsSync(buildDirectory)) {
-  app.use(express.static(buildDirectory));
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(buildDirectory, "index.html"));
-  });
+  // Serve index.html with injected site settings so logo/title render
+  // without a flash of the default values.
+  const indexHtmlPath = path.join(buildDirectory, "index.html");
+  let cachedIndexHtml = null;
+  const loadIndexHtml = () => {
+    if (cachedIndexHtml == null) {
+      try { cachedIndexHtml = fs.readFileSync(indexHtmlPath, "utf8"); }
+      catch { cachedIndexHtml = ""; }
+    }
+    return cachedIndexHtml;
+  };
+
+  const serveIndex = async (_req, res) => {
+    let html = loadIndexHtml();
+    try {
+      const rows = await prisma.setting.findMany({ where: { group: "site" } });
+      const settings = {};
+      for (const r of rows) settings[r.key] = r.value;
+      const inject = `<script>window.__SITE_SETTINGS__=${JSON.stringify(settings).replace(/</g, "\\u003c")};</script>`;
+      html = html.replace("</head>", `${inject}</head>`);
+    } catch (err) {
+      console.warn("[server] could not inject site settings:", err.message);
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(html);
+  };
+
+  // Serve hashed assets etc., but NOT index.html (handled below so we can inject)
+  app.use(express.static(buildDirectory, { index: false }));
+  app.get("*", serveIndex);
 }
 
 // ── Boot runtime (load settings from DB) then start server ──────
