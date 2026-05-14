@@ -35,6 +35,8 @@ function ArrowIcon() {
 
 export function CaseStudies() {
   const cms = usePageContent<{
+    heading?: string;
+    subheading?: string;
     title?: string;
     description?: string[];
     stats?: Array<{ text: string[] }>;
@@ -59,9 +61,9 @@ export function CaseStudies() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title */}
         <div className="text-center mb-12">
-          <h2 className="text-gray-900 text-3xl lg:text-4xl mb-4">Case Studies</h2>
+          <h2 className="text-gray-900 text-3xl lg:text-4xl mb-4">{cms?.heading ?? "Case Studies"}</h2>
           <p className="text-gray-600 text-lg lg:text-xl max-w-2xl mx-auto">
-            Real results from businesses we've helped
+            {cms?.subheading ?? "Real results from businesses we've helped"}
           </p>
         </div>
 

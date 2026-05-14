@@ -64,6 +64,7 @@ const SCHEMAS: Record<string, Schema> = {
     headingLine2: t("Heading Line 2"),
     description: ta("Description"),
     benefits: sl("Benefits"),
+    platformsHeading: t("Platforms Heading"),
     platforms: sl("Platforms"),
   },
   "homepage/reviews": {
@@ -82,8 +83,12 @@ const SCHEMAS: Record<string, Schema> = {
     heading: t("Heading"),
     subheading: ta("Subheading"),
     faqs: ol("FAQs", "FAQ", { question: { type: "text", label: "Question" }, answer: { type: "textarea", label: "Answer" } }),
+    ctaHeading: t("CTA Heading"),
+    ctaText: ta("CTA Text"),
   },
   "homepage/caseStudies": {
+    heading: t("Section Heading"),
+    subheading: ta("Section Subheading"),
     title: t("Title"),
     description: sl("Description Paragraphs"),
     stats: { type: "obj-list", label: "Stats", itemLabel: "Stat", fields: { text: { type: "text", label: "Text (comma-separated lines)" } } },
@@ -93,6 +98,7 @@ const SCHEMAS: Record<string, Schema> = {
     contactEmail: t("Contact Email"),
     contactLocation: t("Contact Location"),
     services: sl("Services"),
+    copyrightText: t("Copyright Text (use {year} for current year)"),
   },
   "checkout/hero": {
     badge: t("Badge"),

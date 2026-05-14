@@ -12,6 +12,7 @@ export function Establishment({ image, svgPaths }: EstablishmentProps) {
     headingLine2?: string;
     description?: string;
     benefits?: string[];
+    platformsHeading?: string;
     platforms?: string[];
   }>("homepage", "establishment");
 
@@ -77,7 +78,7 @@ export function Establishment({ image, svgPaths }: EstablishmentProps) {
             {/* Platforms */}
             <div>
               <h3 className="text-gray-900 text-xl lg:text-2xl mb-4">
-                Platforms We Work With:
+                {cms?.platformsHeading ?? "Platforms We Work With:"}
               </h3>
               
               <div className="flex flex-wrap gap-2">

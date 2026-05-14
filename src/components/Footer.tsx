@@ -13,7 +13,10 @@ export function Footer({ svgPaths }: FooterProps) {
     description?: string;
     contactEmail?: string;
     contactLocation?: string;
+    copyrightText?: string;
   }>("homepage", "footer");
+
+  const copyrightText = (cms?.copyrightText ?? "© {year} creditremovers.com. All rights reserved.").replace("{year}", String(currentYear));
 
   const legal = [
     { label: "Privacy Policy", href: "/privacy-policy" },
@@ -74,7 +77,7 @@ export function Footer({ svgPaths }: FooterProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-white/70 text-sm lg:text-base text-center md:text-left">
-              © {currentYear} reviewcleaners.com. All rights reserved.
+              {copyrightText}
             </p>
             
             <div className="flex flex-wrap justify-center gap-6">

@@ -45,6 +45,8 @@ export function FAQ({ image, background, svgPaths }: FAQProps) {
     heading?: string;
     subheading?: string;
     faqs?: Array<{ question: string; answer: string }>;
+    ctaHeading?: string;
+    ctaText?: string;
   }>("homepage", "faq");
 
   const faqs = cms?.faqs ?? [
@@ -115,9 +117,9 @@ export function FAQ({ image, background, svgPaths }: FAQProps) {
                 <HelpCircle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl lg:text-2xl mb-2">Still Have Questions?</h3>
+                <h3 className="text-xl lg:text-2xl mb-2">{cms?.ctaHeading ?? "Still Have Questions?"}</h3>
                 <p className="text-white/90 text-base lg:text-lg">
-                  Our reputation management experts are here to help. Get a free consultation today.
+                  {cms?.ctaText ?? "Our reputation management experts are here to help. Get a free consultation today."}
                 </p>
               </div>
             </div>
