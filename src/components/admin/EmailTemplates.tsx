@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAdminApi, type EmailTemplate } from "../../hooks/useAdmin";
-import { Save, ToggleLeft, ToggleRight, Plus, Trash2 } from "lucide-react";
+import { useAdminApi, useAdminUpload, type EmailTemplate } from "../../hooks/useAdmin";
+import { Save, ToggleLeft, ToggleRight, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 
 /* ── helpers ─────────────────────────────────────────────────── */
 function deepClone<T>(v: T): T {
@@ -19,6 +19,7 @@ export default function EmailTemplates() {
   const { data, loading, reload, mutate } = useAdminApi<EmailTemplate[]>(
     "/api/admin/email-templates"
   );
+  const upload = useAdminUpload();
   const [selected, setSelected] = useState<EmailTemplate | null>(null);
   const [subject, setSubject] = useState("");
   const [previewText, setPreviewText] = useState("");
@@ -129,6 +130,73 @@ export default function EmailTemplates() {
                 <F label="Subject" value={subject} onChange={setSubject} />
                 <F label="Preview Text" value={previewText} onChange={setPreviewText} />
               </Sec>
+
+              {/* Branding */}
+              {content.brand && (
+                <Sec title="Branding">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-slate-400">Email Logo (inline image)</label>
+                    {content.brand.logoAttachmentPath && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800">
+                        {content.brand.logoAttachmentPath.startsWith("/") ? (
+                          <img src={content.brand.logoAttachmentPath} alt="Email logo" className="h-10 w-auto max-w-[160px] object-contain bg-white rounded" />
+                        ) : (
+                          <ImageIcon size={16} className="text-slate-500 shrink-0" />
+                        )}
+                        <span className="text-xs text-slate-400 truncate flex-1">{content.brand.logoAttachmentPath}</span>
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 rounded-lg border border-dashed border-slate-700 bg-slate-800/50 px-4 py-3 text-sm text-slate-400 cursor-pointer hover:border-blue-500 hover:text-blue-400 transition">
+                      <Upload size={16} />
+                      Upload new logo
+                      <input
+                        type="file"
+                        accept="image/*,.svg"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const result = await upload(file);
+                            const ext = (result.filename.split(".").pop() || "").toLowerCase();
+                            const typeMap: Record<string, string> = {
+                              svg: "image/svg+xml",
+                              png: "image/png",
+                              jpg: "image/jpeg",
+                              jpeg: "image/jpeg",
+                              webp: "image/webp",
+                              gif: "image/gif",
+                            };
+                            setContent((prev) => {
+                              const next = deepClone(prev);
+                              if (!next.brand) next.brand = {};
+                              next.brand.logoAttachmentPath = result.path;
+                              next.brand.logoAttachmentType = typeMap[ext] || "image/png";
+                              if (!next.brand.logoUrl || !String(next.brand.logoUrl).startsWith("cid:")) {
+                                next.brand.logoUrl = "cid:brand-logo";
+                              }
+                              return next;
+                            });
+                          } catch {
+                            alert("Upload failed");
+                          } finally {
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                    <F
+                      label="Logo path (manual override)"
+                      value={content.brand.logoAttachmentPath || ""}
+                      onChange={(v) => set("brand.logoAttachmentPath", v)}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <F label="Brand Name" value={content.brand.name || ""} onChange={(v) => set("brand.name", v)} />
+                    <F label="Primary Color" value={content.brand.primaryColor || ""} onChange={(v) => set("brand.primaryColor", v)} />
+                  </div>
+                </Sec>
+              )}
 
               {/* Hero */}
               {content.hero && (

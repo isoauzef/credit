@@ -5,7 +5,7 @@ const sharp = require("sharp");
 const { buildSubmissionEmail, loadTemplateData } = require("./renderEmail");
 
 let cachedTransporter;
-let cachedLogoBuffer;
+const logoBufferCache = new Map();
 
 /**
  * Build a nodemailer transporter using DB-driven SMTP settings.
@@ -132,7 +132,20 @@ async function buildAttachments(slug = "quote-autoresponse") {
   const attachmentPath = templateData?.brand?.logoAttachmentPath;
 
   if (logoUrl && logoUrl.startsWith("cid:") && attachmentPath) {
-    const absolutePath = path.resolve(__dirname, attachmentPath);
+    const projectRoot = path.join(__dirname, "..", "..");
+    let absolutePath;
+    if (path.isAbsolute(attachmentPath)) {
+      absolutePath = attachmentPath;
+    } else if (attachmentPath.startsWith("/")) {
+      // public web path like "/uploads/foo.png" → <projectRoot>/public/uploads/foo.png
+      absolutePath = path.join(projectRoot, "public", attachmentPath.replace(/^\/+/, ""));
+    } else {
+      absolutePath = path.resolve(__dirname, attachmentPath);
+    }
+    if (!fs.existsSync(absolutePath)) {
+      console.warn(`[email] Logo attachment not found: ${absolutePath}`);
+      return attachments;
+    }
     const extension = path.extname(absolutePath).toLowerCase();
     const cid = logoUrl.replace("cid:", "");
 
@@ -171,11 +184,12 @@ async function buildAttachments(slug = "quote-autoresponse") {
 }
 
 async function getCachedLogoPng(svgPath) {
-  if (cachedLogoBuffer) {
-    return cachedLogoBuffer;
+  if (logoBufferCache.has(svgPath)) {
+    return logoBufferCache.get(svgPath);
   }
 
   const svgContents = fs.readFileSync(svgPath);
-  cachedLogoBuffer = await sharp(svgContents).png().toBuffer();
-  return cachedLogoBuffer;
+  const buffer = await sharp(svgContents).png().toBuffer();
+  logoBufferCache.set(svgPath, buffer);
+  return buffer;
 }

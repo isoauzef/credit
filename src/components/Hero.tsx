@@ -206,8 +206,6 @@ export function Hero({
     };
 
     const handleFocusOut = () => {
-      scrollFormIntoView(180, { force: true });
-
       window.setTimeout(() => {
         if (typeof document !== "undefined") {
           const active = document.activeElement;
@@ -245,7 +243,12 @@ export function Hero({
         viewportHeightRef.current !== null &&
         viewport.height > viewportHeightRef.current
       ) {
-        scrollFormIntoView(120);
+        const active = typeof document !== "undefined" ? document.activeElement : null;
+        const container = formContainerRef.current;
+        const focusInsideForm = !!(active && container && container.contains(active));
+        if (focusInsideForm) {
+          scrollFormIntoView(120);
+        }
       }
 
       viewportHeightRef.current = viewport.height;
