@@ -78,7 +78,6 @@ export default function ContactSubmissions() {
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Name</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Phone</th>
-                <th className="px-4 py-3 text-left font-medium text-slate-400">Address</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-400">Credit Score</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
               </tr>
@@ -86,7 +85,7 @@ export default function ContactSubmissions() {
             <tbody className="divide-y divide-slate-800">
               {!data?.length ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                     {loading ? "Loading..." : "No submissions yet."}
                   </td>
                 </tr>
@@ -110,7 +109,6 @@ export default function ContactSubmissions() {
                       </td>
                       <td className="px-4 py-3 text-slate-300">{s.email}</td>
                       <td className="px-4 py-3 text-slate-300">{s.phone}</td>
-                      <td className="px-4 py-3 text-slate-300">{s.companyAddress || "—"}</td>
                       <td className="px-4 py-3 text-slate-300">
                         {creditScore ? CREDIT_SCORE_LABELS[creditScore] || creditScore : "—"}
                       </td>
@@ -136,11 +134,8 @@ export default function ContactSubmissions() {
                     </tr>
                     {expandedId === s.id && (
                       <tr key={`${s.id}-detail`}>
-                        <td colSpan={7} className="px-6 py-4 bg-slate-800/30">
+                        <td colSpan={6} className="px-6 py-4 bg-slate-800/30">
                           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-                            {s.companyAddress && (
-                              <Detail label="Address" value={s.companyAddress} />
-                            )}
                             {creditScore && (
                               <Detail
                                 label="Credit Score"

@@ -27,7 +27,6 @@ const initialFormState = {
   lastName: "",
   email: "",
   phone: "",
-  address: "",
   creditScore: "",
   negativeItems: "",
   hasReport: "",
@@ -47,7 +46,6 @@ const INPUT_IDS: Record<HeroFieldKey, string> = {
   lastName: "hero-input-last-name",
   email: "hero-input-email",
   phone: "hero-input-phone",
-  address: "hero-input-address",
   creditScore: "hero-input-credit-score",
   negativeItems: "hero-input-negative-items",
   hasReport: "hero-input-has-report",
@@ -62,7 +60,7 @@ const BUTTON_IDS = {
 type HeroButtonId = keyof typeof BUTTON_IDS;
 
 const BUTTON_VALIDATION_FIELDS: Record<HeroButtonId, HeroFieldKey[]> = {
-  continueStep1: ["firstName", "lastName", "email", "phone", "address"],
+  continueStep1: ["firstName", "lastName", "email", "phone"],
   back: [],
   submit: [...STEP2_FIELDS],
 };
@@ -490,10 +488,7 @@ export function Hero({
       formData.firstName ||
       formData.email;
 
-    const address = formData.address.trim();
-
     const problemDetails = [
-      `Address: ${address}`,
       `Credit Score Range: ${formData.creditScore}`,
       `Negative Items: ${formData.negativeItems}`,
       `Has Credit Report: ${formData.hasReport}`,
@@ -519,7 +514,6 @@ export function Hero({
           metadata: {
             firstName: formData.firstName,
             lastName: formData.lastName,
-            companyAddress: address,
             creditScore: formData.creditScore,
             negativeItems: formData.negativeItems,
             hasCreditReport: formData.hasReport,
@@ -772,25 +766,6 @@ export function Hero({
                             placeholder="(555) 555-5555"
                             inputMode="numeric"
                             maxLength={14}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor={INPUT_IDS.address}
-                            className="block text-gray-700 mb-1.5 text-sm lg:text-base"
-                          >
-                            Address *
-                          </label>
-                          <input
-                            id={INPUT_IDS.address}
-                            type="text"
-                            name="address"
-                            value={formData.address}
-                            onChange={handleInputChange}
-                            className={getInputClass("address")}
-                            placeholder="123 Main St, City, State"
-                            autoComplete="street-address"
                             required
                           />
                         </div>
