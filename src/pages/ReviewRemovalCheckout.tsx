@@ -473,6 +473,7 @@ function FileDropzone({
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [skipped, setSkipped] = useState(false);
   const inputId = useMemo(() => `file_${Math.random().toString(36).slice(2)}`, []);
 
   const onFile = async (file: File) => {
@@ -488,10 +489,30 @@ function FileDropzone({
     }
   };
 
+  if (skipped && !doc) {
+    return (
+      <div className="flex items-center justify-between gap-3 border border-dashed border-gray-200 rounded-xl px-4 py-3 bg-gray-50/40">
+        <div className="min-w-0">
+          <p className="text-sm text-gray-500 truncate">
+            <span className="font-medium">{label}</span>
+            <span className="ml-2 text-xs text-gray-400">— skipped</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSkipped(false)}
+          className="text-xs text-[#1e5a8a] hover:underline whitespace-nowrap"
+        >
+          Add it
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <label htmlFor={inputId} className="block text-sm text-gray-700 font-medium mb-1.5">
-        {label} <span className="text-red-400 ml-0.5">*</span>
+        {label}
         {hint && <span className="text-gray-400 font-normal ml-1.5">({hint})</span>}
       </label>
       <label
@@ -533,15 +554,28 @@ function FileDropzone({
           }}
         />
       </label>
-      {doc && !uploading && (
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className="mt-1 text-xs text-gray-500 hover:text-red-600 inline-flex items-center gap-1"
-        >
-          <Trash2 className="w-3 h-3" /> Remove
-        </button>
-      )}
+      <div className="mt-1 flex items-center justify-between">
+        <div>
+          {doc && !uploading && (
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="text-xs text-gray-500 hover:text-red-600 inline-flex items-center gap-1"
+            >
+              <Trash2 className="w-3 h-3" /> Remove
+            </button>
+          )}
+        </div>
+        {!doc && !uploading && (
+          <button
+            type="button"
+            onClick={() => setSkipped(true)}
+            className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+          >
+            skip if you don’t have it
+          </button>
+        )}
+      </div>
       {error && (
         <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {error}
@@ -601,6 +635,7 @@ function SubmissionForm() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [idDoc, setIdDoc] = useState<UploadedDoc | null>(null);
   const [utilityDoc, setUtilityDoc] = useState<UploadedDoc | null>(null);
+  const [creditReportDoc, setCreditReportDoc] = useState<UploadedDoc | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const [signatureEmpty, setSignatureEmpty] = useState(true);
   const [agreed, setAgreed] = useState(false);
@@ -648,11 +683,9 @@ function SubmissionForm() {
   }, [form]);
 
   const step2Errors = useMemo(() => {
-    const errs: { id?: string; utility?: string } = {};
-    if (!idDoc) errs.id = "Required";
-    if (!utilityDoc) errs.utility = "Required";
-    return errs;
-  }, [idDoc, utilityDoc]);
+    // All uploads optional — keep memo for future hard validation hooks.
+    return {} as Record<string, string>;
+  }, [idDoc, utilityDoc, creditReportDoc]);
 
   const goNext = () => {
     if (step === 1) {
@@ -757,6 +790,7 @@ function SubmissionForm() {
           ssn: form.ssn.replace(/\D/g, ""),
           idDocToken: idDoc?.token,
           utilityDocToken: utilityDoc?.token,
+          creditReportDocToken: creditReportDoc?.token,
           signatureDataUrl,
           authLetterSnapshot: authLetterText,
         }),
@@ -929,8 +963,8 @@ function SubmissionForm() {
           {step === 2 && (
             <div className="space-y-6">
               <p className="text-sm text-gray-600">
-                We need to verify your identity and address before working with the credit bureaus. Please upload a
-                clear photo or PDF scan of each document below.
+                Uploading these documents helps us verify your identity and start work faster. All three are optional
+                — if you don’t have one on hand, just skip it and we’ll request it later if needed.
               </p>
 
               <FileDropzone
@@ -947,6 +981,14 @@ function SubmissionForm() {
                 doc={utilityDoc}
                 onChange={setUtilityDoc}
                 hint="Within the last 90 days, showing your address"
+              />
+
+              <FileDropzone
+                label="Credit Report"
+                accept="image/jpeg,image/png,application/pdf"
+                doc={creditReportDoc}
+                onChange={setCreditReportDoc}
+                hint="From Equifax, Experian, TransUnion, or annualcreditreport.com"
               />
 
               <div className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">

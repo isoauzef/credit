@@ -278,7 +278,7 @@ export default function CheckoutSubmissions() {
                           </div>
 
                           {/* Credit Repair PII section */}
-                          {(s.address || s.dob || s.ssnLast4 || s.idDocPath || s.utilityDocPath || s.signedAt) && (
+                          {(s.address || s.dob || s.ssnLast4 || s.idDocPath || s.utilityDocPath || s.creditReportDocPath || s.signedAt) && (
                             <div>
                               <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
                                 Credit Repair Intake
@@ -316,7 +316,7 @@ export default function CheckoutSubmissions() {
                                     </div>
                                   </div>
                                 )}
-                                {(s.idDocPath || s.utilityDocPath) && (
+                                {(s.idDocPath || s.utilityDocPath || s.creditReportDocPath) && (
                                   <div className="sm:col-span-2 flex flex-wrap gap-2">
                                     {s.idDocPath && (
                                       <button
@@ -334,6 +334,15 @@ export default function CheckoutSubmissions() {
                                         className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
                                       >
                                         <FileText size={14} /> View Utility Bill
+                                      </button>
+                                    )}
+                                    {s.creditReportDocPath && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.creditReportDocPath!); }}
+                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                                      >
+                                        <FileText size={14} /> View Credit Report
                                       </button>
                                     )}
                                   </div>

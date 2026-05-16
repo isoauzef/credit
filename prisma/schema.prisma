@@ -65,6 +65,7 @@ model CheckoutSubmission {
   // Document uploads (Step 2) — relative paths under private-uploads/
   idDocPath             String?  @db.VarChar(500)
   utilityDocPath        String?  @db.VarChar(500)
+  creditReportDocPath   String?  @db.VarChar(500)
   // Auth-letter signature (Step 3)
   signatureDataUrl      String?  @db.LongText           // image/png data URL
   signedAt              DateTime?

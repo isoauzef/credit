@@ -128,7 +128,7 @@ router.get("/checkout-submissions", async (_req, res) => {
         id: true, name: true, email: true, phone: true, companyName: true,
         googleDataId: true, reviewLinks: true, reason: true, quantity: true, amount: true,
         address: true, dob: true, ssnLast4: true,
-        idDocPath: true, utilityDocPath: true,
+        idDocPath: true, utilityDocPath: true, creditReportDocPath: true,
         signedAt: true,
         stripeSessionId: true, stripePaymentIntentId: true, stripeCustomerId: true,
         stripeSetupIntentId: true, stripePaymentMethodId: true,

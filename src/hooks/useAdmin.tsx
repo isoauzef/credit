@@ -35,6 +35,7 @@ export type CheckoutSubmission = {
   ssnLast4?: string | null;
   idDocPath?: string | null;
   utilityDocPath?: string | null;
+  creditReportDocPath?: string | null;
   signedAt?: string | null;
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;

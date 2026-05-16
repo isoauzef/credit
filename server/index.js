@@ -222,7 +222,7 @@ app.get("/api/checkout-submissions", async (req, res) => {
         id: true, name: true, email: true, phone: true, companyName: true,
         googleDataId: true, reviewLinks: true, reason: true, quantity: true, amount: true,
         address: true, dob: true, ssnLast4: true,
-        idDocPath: true, utilityDocPath: true, signedAt: true,
+        idDocPath: true, utilityDocPath: true, creditReportDocPath: true, signedAt: true,
         stripeSessionId: true, stripePaymentIntentId: true, stripeCustomerId: true,
         stripeSetupIntentId: true, stripePaymentMethodId: true,
         crmLeadId: true, paymentStatus: true,
@@ -265,7 +265,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
 
   const {
     firstName, lastName, email, phone, address, dob, ssn,
-    idDocToken, utilityDocToken,
+    idDocToken, utilityDocToken, creditReportDocToken,
     signatureDataUrl, authLetterSnapshot,
   } = req.body || {};
 
@@ -279,8 +279,10 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(String(dob))) errors.push("dob");
   const ssnDigits = String(ssn || "").replace(/\D/g, "");
   if (ssnDigits.length !== 9) errors.push("ssn");
-  if (!idDocToken || !/^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i.test(String(idDocToken))) errors.push("idDocToken");
-  if (!utilityDocToken || !/^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i.test(String(utilityDocToken))) errors.push("utilityDocToken");
+  const tokenRe = /^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i;
+  if (idDocToken && !tokenRe.test(String(idDocToken))) errors.push("idDocToken");
+  if (utilityDocToken && !tokenRe.test(String(utilityDocToken))) errors.push("utilityDocToken");
+  if (creditReportDocToken && !tokenRe.test(String(creditReportDocToken))) errors.push("creditReportDocToken");
   if (!signatureDataUrl || !/^data:image\/png;base64,/.test(String(signatureDataUrl))) errors.push("signature");
   if (errors.length) {
     return res.status(400).json({ message: "Validation failed", fields: errors });
@@ -288,7 +290,8 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
 
   // ── Verify upload tokens correspond to files on disk ──
   const privateDir = path.join(__dirname, "..", "private-uploads");
-  for (const t of [idDocToken, utilityDocToken]) {
+  for (const t of [idDocToken, utilityDocToken, creditReportDocToken]) {
+    if (!t) continue;
     const full = path.join(privateDir, String(t));
     if (!full.startsWith(privateDir + path.sep) || !fs.existsSync(full)) {
       return res.status(400).json({ message: "Uploaded document not found. Please re-upload." });
@@ -341,8 +344,9 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
         dob: String(dob),
         ssnLast4: ssnDigits.slice(-4),
         ssnEncrypted,
-        idDocPath: String(idDocToken),
-        utilityDocPath: String(utilityDocToken),
+        idDocPath: idDocToken ? String(idDocToken) : null,
+        utilityDocPath: utilityDocToken ? String(utilityDocToken) : null,
+        creditReportDocPath: creditReportDocToken ? String(creditReportDocToken) : null,
         signatureDataUrl: String(signatureDataUrl),
         signedAt: new Date(),
         authLetterSnapshot: authLetterSnapshot ? String(authLetterSnapshot).slice(0, 10000) : null,
