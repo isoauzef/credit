@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent, ChangeEvent, useCallback, useMemo } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent, useCallback, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Check,
@@ -586,7 +586,7 @@ function FileDropzone({
 }
 
 function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const labels = ["Personal Info", "Verification", "Authorization", "Payment"];
+  const labels = ["Personal Info", "Documentation", "Authorization", "Add Card"];
   return (
     <div className="flex items-center justify-between gap-2 mb-8">
       {labels.map((label, i) => {
@@ -648,6 +648,20 @@ function SubmissionForm() {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [setupIntentId, setSetupIntentId] = useState("");
+
+  // Scroll-to-top of the form card whenever step (or the card_step status) changes
+  const formCardRef = useRef<HTMLDivElement | null>(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const el = formCardRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 80; // 80px breathing room above
+    window.scrollTo({ top, behavior: "smooth" });
+  }, [step, status]);
 
   useEffect(() => {
     if (status !== "card_step" || stripePromise) return;
@@ -858,7 +872,7 @@ function SubmissionForm() {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl shadow-gray-900/5 border border-gray-100 p-6 sm:p-10">
+        <div ref={formCardRef} className="bg-white rounded-2xl shadow-xl shadow-gray-900/5 border border-gray-100 p-6 sm:p-10 scroll-mt-24">
           <StepIndicator step={step} />
 
           {/* ── Step 1: Personal Info ── */}
@@ -959,7 +973,7 @@ function SubmissionForm() {
             </div>
           )}
 
-          {/* ── Step 2: Verification Documents ── */}
+          {/* ── Step 2: Documentation ── */}
           {step === 2 && (
             <div className="space-y-6">
               <p className="text-sm text-gray-600">
@@ -1123,7 +1137,7 @@ function SubmissionForm() {
                     </>
                   ) : (
                     <>
-                      Continue to Payment <ArrowRight className="w-4 h-4" />
+                      Add Card <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
