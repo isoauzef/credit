@@ -51,12 +51,25 @@ model CheckoutSubmission {
   name                  String   @db.VarChar(255)
   email                 String   @db.VarChar(255)
   phone                 String?  @db.VarChar(50)
-  companyName           String   @db.VarChar(255)
+  companyName           String?  @db.VarChar(255)
   googleDataId          String?  @db.VarChar(255)
-  reviewLinks           Json
+  reviewLinks           Json?
   reason                String?  @db.Text
   quantity              Int      @default(1)
   amount                Int      @default(0) // cents
+  // Credit repair intake (Step 1)
+  address               String?  @db.VarChar(500)
+  dob                   String?  @db.VarChar(20)        // YYYY-MM-DD
+  ssnLast4              String?  @db.VarChar(4)
+  ssnEncrypted          String?  @db.Text               // base64(KMS or AES-256-GCM ciphertext)
+  // Document uploads (Step 2) — relative paths under private-uploads/
+  idDocPath             String?  @db.VarChar(500)
+  utilityDocPath        String?  @db.VarChar(500)
+  // Auth-letter signature (Step 3)
+  signatureDataUrl      String?  @db.LongText           // image/png data URL
+  signedAt              DateTime?
+  authLetterSnapshot    String?  @db.Text               // rendered auth letter text at sign time
+  // Stripe + status
   stripeSessionId       String?  @db.VarChar(255)
   stripePaymentIntentId String?  @db.VarChar(255)
   stripeCustomerId      String?  @db.VarChar(255)

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAdminApi, type CheckoutSubmission } from "../../hooks/useAdmin";
-import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star } from "lucide-react";
+import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
+import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
@@ -23,8 +23,55 @@ export default function CheckoutSubmissions() {
   const { data, loading, reload, mutate } = useAdminApi<CheckoutSubmission[]>(
     "/api/admin/checkout-submissions"
   );
+  const { token } = useAdminAuth();
   const [capturing, setCapturing] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [revealedSsn, setRevealedSsn] = useState<Record<number, string>>({});
+  const [signatures, setSignatures] = useState<Record<number, { signatureDataUrl: string | null; signedAt: string | null; authLetterSnapshot: string | null }>>({});
+
+  const revealSSN = async (id: number) => {
+    if (revealedSsn[id]) {
+      setRevealedSsn((p) => { const c = { ...p }; delete c[id]; return c; });
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/ssn`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) throw new Error("Failed to decrypt SSN");
+      const data = await resp.json();
+      setRevealedSsn((p) => ({ ...p, [id]: data.ssn }));
+    } catch (e: any) {
+      alert(e.message || "Could not reveal SSN");
+    }
+  };
+
+  const loadSignature = async (id: number) => {
+    if (signatures[id]) return;
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/signature`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      setSignatures((p) => ({ ...p, [id]: data }));
+    } catch (_) { /* ignore */ }
+  };
+
+  const downloadSecureFile = async (token2: string) => {
+    if (!token) return;
+    const resp = await fetch(`/api/secure-uploads/${token2}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) {
+      alert("Could not load file");
+      return;
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this checkout submission?")) return;
@@ -95,7 +142,7 @@ export default function CheckoutSubmissions() {
                     : [];
                   return (
                   <> 
-                  <tr key={s.id} className="hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : s.id)}>
+                  <tr key={s.id} className="hover:bg-slate-800/50 cursor-pointer" onClick={() => { const nextId = isExpanded ? null : s.id; setExpandedId(nextId); if (nextId) loadSignature(s.id); }}>
                     <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
                       {formatDate(s.createdAt)}
                     </td>
@@ -229,6 +276,85 @@ export default function CheckoutSubmissions() {
                               </div>
                             )}
                           </div>
+
+                          {/* Credit Repair PII section */}
+                          {(s.address || s.dob || s.ssnLast4 || s.idDocPath || s.utilityDocPath || s.signedAt) && (
+                            <div>
+                              <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
+                                Credit Repair Intake
+                              </h4>
+                              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                                {s.address && (
+                                  <div className="sm:col-span-2">
+                                    <p className="text-slate-500 text-xs mb-1">Address</p>
+                                    <p className="text-slate-200">{s.address}</p>
+                                  </div>
+                                )}
+                                {s.dob && (
+                                  <div>
+                                    <p className="text-slate-500 text-xs mb-1">Date of Birth</p>
+                                    <p className="text-slate-200">{s.dob}</p>
+                                  </div>
+                                )}
+                                {s.ssnLast4 && (
+                                  <div>
+                                    <p className="text-slate-500 text-xs mb-1">SSN</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-slate-200 font-mono">
+                                        {revealedSsn[s.id]
+                                          ? `${revealedSsn[s.id].slice(0, 3)}-${revealedSsn[s.id].slice(3, 5)}-${revealedSsn[s.id].slice(5)}`
+                                          : `***-**-${s.ssnLast4}`}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); revealSSN(s.id); }}
+                                        className="rounded p-1 text-slate-400 hover:bg-slate-700"
+                                        title={revealedSsn[s.id] ? "Hide SSN" : "Reveal SSN"}
+                                      >
+                                        {revealedSsn[s.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                {(s.idDocPath || s.utilityDocPath) && (
+                                  <div className="sm:col-span-2 flex flex-wrap gap-2">
+                                    {s.idDocPath && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.idDocPath!); }}
+                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                                      >
+                                        <ImageIcon size={14} /> View Photo ID
+                                      </button>
+                                    )}
+                                    {s.utilityDocPath && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.utilityDocPath!); }}
+                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
+                                      >
+                                        <FileText size={14} /> View Utility Bill
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {signatures[s.id]?.signatureDataUrl && (
+                                  <div className="sm:col-span-2">
+                                    <p className="text-slate-500 text-xs mb-1">
+                                      Signature {signatures[s.id]?.signedAt && (
+                                        <span className="ml-1 text-slate-600">({formatDate(signatures[s.id]!.signedAt!)})</span>
+                                      )}
+                                    </p>
+                                    <img
+                                      src={signatures[s.id]!.signatureDataUrl!}
+                                      alt="Signature"
+                                      className="bg-white rounded-md p-2 border border-slate-700 max-h-32"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

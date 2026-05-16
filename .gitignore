@@ -7,3 +7,4 @@ deploy-prod.patch
 deploy-prod.tar.gz
 .copilot
 /generated/prisma
+/private-uploads

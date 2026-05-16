@@ -123,11 +123,55 @@ router.get("/checkout-submissions", async (_req, res) => {
   try {
     const rows = await prisma.checkoutSubmission.findMany({
       orderBy: { createdAt: "desc" },
+      // Exclude bulky/sensitive blobs from the list view
+      select: {
+        id: true, name: true, email: true, phone: true, companyName: true,
+        googleDataId: true, reviewLinks: true, reason: true, quantity: true, amount: true,
+        address: true, dob: true, ssnLast4: true,
+        idDocPath: true, utilityDocPath: true,
+        signedAt: true,
+        stripeSessionId: true, stripePaymentIntentId: true, stripeCustomerId: true,
+        stripeSetupIntentId: true, stripePaymentMethodId: true,
+        crmLeadId: true, paymentStatus: true,
+        createdAt: true, updatedAt: true,
+      },
     });
     return res.json(rows);
   } catch (err) {
     console.error("[admin] checkout-submissions list", err);
     return res.status(500).json({ message: "Failed to load" });
+  }
+});
+
+// Reveal decrypted SSN (admin-only). Audit log this action.
+const { decryptPII } = require("../helpers/encryption");
+router.get("/checkout-submissions/:id/ssn", async (req, res) => {
+  try {
+    const sub = await prisma.checkoutSubmission.findUnique({
+      where: { id: Number(req.params.id) },
+      select: { ssnEncrypted: true },
+    });
+    if (!sub || !sub.ssnEncrypted) return res.status(404).json({ message: "Not found" });
+    const plain = await decryptPII(sub.ssnEncrypted);
+    console.log(`[admin] SSN revealed: submission=${req.params.id} admin=${req.adminUser?.email}`);
+    return res.json({ ssn: plain });
+  } catch (err) {
+    console.error("[admin] ssn decrypt failed", err);
+    return res.status(500).json({ message: "Decryption failed" });
+  }
+});
+
+// Fetch signature image (admin-only)
+router.get("/checkout-submissions/:id/signature", async (req, res) => {
+  try {
+    const sub = await prisma.checkoutSubmission.findUnique({
+      where: { id: Number(req.params.id) },
+      select: { signatureDataUrl: true, signedAt: true, authLetterSnapshot: true },
+    });
+    if (!sub) return res.status(404).json({ message: "Not found" });
+    return res.json(sub);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed" });
   }
 });
 

@@ -12,6 +12,8 @@ const { sendSubmissionEmail, sendCheckoutSuccessEmail } = require("./email/maile
 const { getBusinessReviews, geolocateIp } = require("./services/serpapi");
 const { searchPlaces } = require("./services/google-places");
 const adminRoutes = require("./routes/admin");
+const secureUploadsRoutes = require("./routes/secure-uploads");
+const { encryptPII, decryptPII, isKmsConfigured } = require("./helpers/encryption");
 
 const app = express();
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3001);
@@ -214,7 +216,19 @@ app.get("/api/checkout-submissions", async (req, res) => {
   if (!authorized) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const rows = await prisma.checkoutSubmission.findMany({ orderBy: { createdAt: "desc" } });
+    const rows = await prisma.checkoutSubmission.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true, name: true, email: true, phone: true, companyName: true,
+        googleDataId: true, reviewLinks: true, reason: true, quantity: true, amount: true,
+        address: true, dob: true, ssnLast4: true,
+        idDocPath: true, utilityDocPath: true, signedAt: true,
+        stripeSessionId: true, stripePaymentIntentId: true, stripeCustomerId: true,
+        stripeSetupIntentId: true, stripePaymentMethodId: true,
+        crmLeadId: true, paymentStatus: true,
+        createdAt: true, updatedAt: true,
+      },
+    });
     return res.json(rows);
   } catch (error) {
     return res.status(500).json({ message: "Could not load checkout submissions." });
@@ -240,6 +254,122 @@ app.get("/api/stripe-price", (_req, res) => {
     tier3Threshold: Number(settings.stripe_price_tier3_threshold) || 20,
     tier3Price: Number(settings.stripe_price_tier3) || 20000,
   });
+});
+
+// ── Credit-repair checkout: save PII + uploads + signature + SetupIntent ──
+app.post("/api/credit-repair-checkout", async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) {
+    return res.status(500).json({ message: "Stripe is not configured." });
+  }
+
+  const {
+    firstName, lastName, email, phone, address, dob, ssn,
+    idDocToken, utilityDocToken,
+    signatureDataUrl, authLetterSnapshot,
+  } = req.body || {};
+
+  // ── Validation ──
+  const errors = [];
+  if (!firstName || String(firstName).trim().length < 1) errors.push("firstName");
+  if (!lastName || String(lastName).trim().length < 1) errors.push("lastName");
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) errors.push("email");
+  if (!phone || String(phone).replace(/\D/g, "").length < 7) errors.push("phone");
+  if (!address || String(address).trim().length < 5) errors.push("address");
+  if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(String(dob))) errors.push("dob");
+  const ssnDigits = String(ssn || "").replace(/\D/g, "");
+  if (ssnDigits.length !== 9) errors.push("ssn");
+  if (!idDocToken || !/^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i.test(String(idDocToken))) errors.push("idDocToken");
+  if (!utilityDocToken || !/^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i.test(String(utilityDocToken))) errors.push("utilityDocToken");
+  if (!signatureDataUrl || !/^data:image\/png;base64,/.test(String(signatureDataUrl))) errors.push("signature");
+  if (errors.length) {
+    return res.status(400).json({ message: "Validation failed", fields: errors });
+  }
+
+  // ── Verify upload tokens correspond to files on disk ──
+  const privateDir = path.join(__dirname, "..", "private-uploads");
+  for (const t of [idDocToken, utilityDocToken]) {
+    const full = path.join(privateDir, String(t));
+    if (!full.startsWith(privateDir + path.sep) || !fs.existsSync(full)) {
+      return res.status(400).json({ message: "Uploaded document not found. Please re-upload." });
+    }
+  }
+
+  // ── Limit signature size to prevent DB abuse (~256KB for PNG data URL) ──
+  if (String(signatureDataUrl).length > 350_000) {
+    return res.status(413).json({ message: "Signature image too large." });
+  }
+
+  const fullName = `${String(firstName).trim()} ${String(lastName).trim()}`.trim();
+  let customer = null;
+  let setupIntent = null;
+  let ssnEncrypted = null;
+
+  try {
+    // Encrypt full SSN (last 4 stored in clear for admin reference)
+    ssnEncrypted = await encryptPII(ssnDigits);
+  } catch (err) {
+    console.error("[credit-repair] SSN encryption failed:", err.message);
+    return res.status(500).json({ message: "Could not securely store sensitive information." });
+  }
+
+  try {
+    customer = await stripe.customers.create({
+      email: String(email),
+      name: fullName.slice(0, 200),
+      phone: String(phone).slice(0, 50),
+      address: { line1: String(address).slice(0, 500) },
+      metadata: { source: "credit-repair-checkout" },
+    });
+
+    setupIntent = await stripe.setupIntents.create({
+      customer: customer.id,
+      payment_method_types: ["card"],
+      usage: "off_session",
+      metadata: {
+        customerName: fullName.slice(0, 500),
+        flow: "credit-repair",
+      },
+    });
+
+    const submission = await prisma.checkoutSubmission.create({
+      data: {
+        name: fullName,
+        email: String(email),
+        phone: String(phone).slice(0, 50),
+        address: String(address).slice(0, 500),
+        dob: String(dob),
+        ssnLast4: ssnDigits.slice(-4),
+        ssnEncrypted,
+        idDocPath: String(idDocToken),
+        utilityDocPath: String(utilityDocToken),
+        signatureDataUrl: String(signatureDataUrl),
+        signedAt: new Date(),
+        authLetterSnapshot: authLetterSnapshot ? String(authLetterSnapshot).slice(0, 10000) : null,
+        quantity: 1,
+        amount: 0,
+        stripeCustomerId: customer.id,
+        stripeSetupIntentId: setupIntent.id,
+        paymentStatus: "pending",
+      },
+    });
+
+    return res.json({
+      clientSecret: setupIntent.client_secret,
+      submissionId: submission.id,
+      customerId: customer.id,
+      setupIntentId: setupIntent.id,
+    });
+  } catch (err) {
+    console.error("[credit-repair] failed:", err);
+    if (setupIntent) {
+      try { await stripe.setupIntents.cancel(setupIntent.id); } catch (_) {}
+    }
+    if (customer) {
+      try { await stripe.customers.del(customer.id); } catch (_) {}
+    }
+    return res.status(500).json({ message: "Could not start checkout. Please try again." });
+  }
 });
 
 // ── SetupIntent creation (save card on file, no charge) ─────────
@@ -537,6 +667,7 @@ app.get("/api/google/reviews/:id", async (req, res) => {
 
 // ── Admin API routes ────────────────────────────────────────────
 app.use("/api/admin", adminRoutes);
+app.use("/api/secure-uploads", secureUploadsRoutes);
 
 // ── Serve uploaded files (logos, favicons, etc.) ────────────────
 const uploadsDir = path.join(__dirname, "..", "public", "uploads");
