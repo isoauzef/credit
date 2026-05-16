@@ -8,3 +8,7 @@ deploy-prod.tar.gz
 .copilot
 /generated/prisma
 /private-uploads
+creditremovers-prod-*.json
+gcp-kms-sa.json
+*kms*sa*.json
+*-service-account*.json
