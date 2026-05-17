@@ -445,6 +445,25 @@ function formatPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+async function convertHeicIfNeeded(file: File): Promise<File> {
+  // iPhone Camera defaults to HEIC. Browsers can't decode HEIC in <canvas>,
+  // so convert it to JPEG client-side before any further processing.
+  const isHeic =
+    /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+  if (!isHeic) return file;
+  try {
+    // Lazy-load — keeps the ~700KB dependency out of the initial bundle.
+    const mod = await import("heic2any");
+    const heic2any = (mod as { default: (opts: unknown) => Promise<Blob | Blob[]> }).default;
+    const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+    const blob = Array.isArray(out) ? out[0] : out;
+    const newName = file.name.replace(/\.(heic|heif)$/i, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    throw new Error("Could not read this HEIC image. Please convert it to JPEG first.");
+  }
+}
+
 async function compressImageIfNeeded(file: File): Promise<File> {
   // Only attempt to compress JPEG/PNG raster images. PDFs are passed through.
   if (!/^image\/(jpeg|png)$/i.test(file.type)) return file;
@@ -485,13 +504,14 @@ async function compressImageIfNeeded(file: File): Promise<File> {
 }
 
 async function uploadSecureFile(file: File): Promise<UploadedDoc> {
-  const optimized = await compressImageIfNeeded(file);
+  const decoded = await convertHeicIfNeeded(file);
+  const optimized = await compressImageIfNeeded(decoded);
   const fd = new FormData();
   fd.append("file", optimized);
   const resp = await fetch("/api/secure-uploads", { method: "POST", body: fd });
   if (!resp.ok) {
     if (resp.status === 413) {
-      throw new Error("File is too large. Please use a smaller image (max ~25MB).");
+      throw new Error("File is too large. Please use a smaller image (max ~50MB).");
     }
     const body = await resp.json().catch(() => ({}));
     throw new Error(body.message || `Upload failed (${resp.status})`);
@@ -1055,7 +1075,7 @@ function SubmissionForm() {
 
               <FileDropzone
                 label="Government-Issued Photo ID"
-                accept="image/jpeg,image/png,application/pdf"
+                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
                 doc={idDoc}
                 onChange={setIdDoc}
                 hint="Driver's license, passport, etc."
@@ -1063,7 +1083,7 @@ function SubmissionForm() {
 
               <FileDropzone
                 label="Utility Bill"
-                accept="image/jpeg,image/png,application/pdf"
+                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
                 doc={utilityDoc}
                 onChange={setUtilityDoc}
                 hint="Within the last 90 days, showing your address"
@@ -1071,7 +1091,7 @@ function SubmissionForm() {
 
               <FileDropzone
                 label="Credit Report"
-                accept="image/jpeg,image/png,application/pdf"
+                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
                 doc={creditReportDoc}
                 onChange={setCreditReportDoc}
                 hint="From Equifax, Experian, TransUnion, or annualcreditreport.com"
