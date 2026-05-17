@@ -267,6 +267,23 @@ app.get("/api/stripe-price", (_req, res) => {
   });
 });
 
+// ── Public: payment method funding type (to block prepaid cards post-confirm) ─
+app.get("/api/payment-method-funding", async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return res.status(500).json({ message: "Stripe not configured" });
+  const id = String(req.query.id || "");
+  if (!/^pm_[A-Za-z0-9]+$/.test(id)) {
+    return res.status(400).json({ message: "Invalid payment method id" });
+  }
+  try {
+    const pm = await stripe.paymentMethods.retrieve(id);
+    return res.json({ funding: pm?.card?.funding || null, brand: pm?.card?.brand || null });
+  } catch (err) {
+    console.error("[payment-method-funding]", err.message);
+    return res.status(500).json({ message: "Could not retrieve payment method" });
+  }
+});
+
 // ── Credit-repair checkout: save PII + uploads + signature + SetupIntent ──
 app.post("/api/credit-repair-checkout", async (req, res) => {
   const stripe = getStripe();

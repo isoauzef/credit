@@ -36,7 +36,7 @@ import emblemDark from "../assets/cc179f68e1f2cdec4f23e00b5ae695644333bf02.png";
 import emblemTransparent from "../assets/939d05bc0607ad5ec76c880ea7052eade6ac13fe.png";
 import { usePageContent } from "../hooks/usePageContent";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 /* ------------------------------------------------------------------ */
 /*  Hero Section                                                       */
@@ -1162,18 +1162,15 @@ function SubmissionForm() {
           )}
 
           {/* ── Step 4: Save Card ── */}
-          {step === 4 && status === "card_step" && (
+          {step === 4 && (status === "card_step" || status === "saving_card") && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
                 Finally, save a card on file. <strong>No charge is made today</strong> — your card is only billed once
                 we begin work and you approve the engagement.
               </p>
               {stripePromise && clientSecret ? (
-                // NOTE: Do NOT pass `clientSecret` in <Elements options>. That switches
-                // Elements into PaymentElement mode, which makes CardElement throw
-                // "could not retrieve data from the specified element" on confirm.
-                // For CardElement, clientSecret is only passed to stripe.confirmCardSetup().
-                <Elements stripe={stripePromise}>
+                // PaymentElement requires clientSecret in Elements options.
+                <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
                   <CardForm
                     clientSecret={clientSecret}
                     onSuccess={handleCardSaved}
@@ -1248,7 +1245,7 @@ function SubmissionForm() {
                 onClick={goBack}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-gray-600 hover:bg-gray-100 transition"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to review
+                <ArrowLeft className="w-4 h-4" /> Back
               </button>
             </div>
           )}
@@ -1293,56 +1290,73 @@ function CardForm({
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleSaveCard = async () => {
-    if (!stripe || !elements) return;
-    const card = elements.getElement(CardElement);
-    if (!card) return;
+    if (!stripe || !elements) {
+      setErrorMsg("Payment form is still loading. Please wait a moment.");
+      return;
+    }
 
     setSaving(true);
     setErrorMsg("");
 
     try {
-      // First create a PaymentMethod to check card type BEFORE confirming
-      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card,
-      });
-
-      if (pmError) {
-        // Log full error to console for diagnostics. The Stripe "could not retrieve
-        // data from the specified element" error almost always means the publishable
-        // key on the page doesn't match the Stripe account that created the SetupIntent.
-        console.error("[Stripe createPaymentMethod error]", pmError);
-        setErrorMsg(pmError.message || "Card verification failed.");
-        onError(pmError.message || "Card verification failed.");
+      // Submit the PaymentElement first (required before confirmSetup).
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        console.error("[Stripe elements.submit error]", submitError);
+        setErrorMsg(submitError.message || "Card verification failed.");
+        onError(submitError.message || "Card verification failed.");
         setSaving(false);
         return;
       }
 
-      // Block prepaid cards before touching the SetupIntent
-      if (paymentMethod?.card?.funding === "prepaid") {
-        setErrorMsg("Prepaid cards are not accepted. Please use a debit or credit card.");
-        onError("Prepaid cards are not accepted. Please use a debit or credit card.");
-        setSaving(false);
-        return;
-      }
-
-      // Card is not prepaid — confirm the SetupIntent with the already-created PM
-      const { error, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: paymentMethod.id,
+      // Confirm the SetupIntent. `redirect: "if_required"` keeps us on-page
+      // unless the bank forces 3DS challenge.
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        clientSecret,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: window.location.href,
+        },
       });
 
       if (error) {
-        console.error("[Stripe confirmCardSetup error]", error);
+        console.error("[Stripe confirmSetup error]", error);
+        // Block prepaid cards after the fact (PaymentElement doesn't expose funding before confirm).
         setErrorMsg(error.message || "Card verification failed.");
         onError(error.message || "Card verification failed.");
         setSaving(false);
       } else if (setupIntent?.status === "succeeded") {
+        // Check funding type to reject prepaid cards.
+        try {
+          const pmId = typeof setupIntent.payment_method === "string"
+            ? setupIntent.payment_method
+            : setupIntent.payment_method?.id;
+          if (pmId) {
+            const fundingResp = await fetch(`/api/payment-method-funding?id=${encodeURIComponent(pmId)}`);
+            if (fundingResp.ok) {
+              const data = await fundingResp.json();
+              if (data?.funding === "prepaid") {
+                setErrorMsg("Prepaid cards are not accepted. Please use a debit or credit card.");
+                onError("Prepaid cards are not accepted. Please use a debit or credit card.");
+                setSaving(false);
+                return;
+              }
+            }
+          }
+        } catch {
+          // Non-fatal — proceed even if funding lookup fails.
+        }
         onSuccess(setupIntent.id);
+      } else if (setupIntent?.status === "requires_action") {
+        setErrorMsg("Your bank requires additional verification. Please follow the prompts.");
+        setSaving(false);
       } else {
         setErrorMsg("Unexpected status. Please try again.");
         setSaving(false);
       }
     } catch (err) {
+      console.error("[Stripe handleSaveCard exception]", err);
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setErrorMsg(msg);
       onError(msg);
@@ -1363,19 +1377,12 @@ function CardForm({
       </div>
 
       <div className="border border-gray-200 rounded-xl px-4 py-3.5 bg-gray-50/50 focus-within:border-[#1e5a8a]/40 focus-within:ring-2 focus-within:ring-[#1e5a8a]/20 focus-within:bg-white transition-all">
-        <CardElement
+        <PaymentElement
           options={{
-            style: {
-              base: {
-                fontSize: "16px",
-                color: "#1a1a1a",
-                "::placeholder": { color: "#9ca3af" },
-                fontFamily: "inherit",
-              },
-              invalid: { color: "#dc2626" },
-            },
-            hidePostalCode: false,
+            layout: "tabs",
+            paymentMethodOrder: ["card"],
           }}
+          onReady={() => setCardReady(true)}
           onChange={(e) => setCardReady(e.complete)}
         />
       </div>
