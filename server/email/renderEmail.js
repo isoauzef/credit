@@ -6,20 +6,38 @@ const path = require("path");
  * Falls back to the static JSON file for backward compatibility.
  */
 async function loadTemplateData(slug) {
+  let result;
   try {
     const prisma = require("../db");
     const tpl = await prisma.emailTemplate.findUnique({ where: { slug } });
     if (tpl && tpl.content) {
       const content = typeof tpl.content === "string" ? JSON.parse(tpl.content) : tpl.content;
-      return { templateData: content, subject: tpl.subject, previewText: tpl.previewText, enabled: tpl.enabled };
+      result = { templateData: content, subject: tpl.subject, previewText: tpl.previewText, enabled: tpl.enabled };
     }
   } catch (err) {
     console.warn("[email] Failed to load template from DB, falling back to file:", err.message);
   }
-  // Fallback to static file
-  const templateDataPath = path.join(__dirname, "template-data.json");
-  const data = JSON.parse(fs.readFileSync(templateDataPath, "utf8"));
-  return { templateData: data, subject: data.subjectTemplate, previewText: data.previewText, enabled: true };
+  if (!result) {
+    // Fallback to static file
+    const templateDataPath = path.join(__dirname, "template-data.json");
+    const data = JSON.parse(fs.readFileSync(templateDataPath, "utf8"));
+    result = { templateData: data, subject: data.subjectTemplate, previewText: data.previewText, enabled: true };
+  }
+
+  // Auto-correct logoUrl: if an attachment path is configured but logoUrl is
+  // not a cid: reference (e.g. it's an old absolute URL from a previous domain,
+  // or a relative /uploads/ path), force cid mode so the inline attachment is
+  // used in both the rendered HTML and the buildAttachments() step.
+  try {
+    const brand = result.templateData && result.templateData.brand;
+    if (brand && brand.logoAttachmentPath) {
+      if (!brand.logoUrl || !String(brand.logoUrl).startsWith("cid:")) {
+        brand.logoUrl = "cid:brand-logo";
+      }
+    }
+  } catch { /* ignore */ }
+
+  return result;
 }
 
 function get(obj, keyPath) {
