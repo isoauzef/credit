@@ -701,8 +701,7 @@ function SubmissionForm() {
   const [creditReportDoc, setCreditReportDoc] = useState<UploadedDoc | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const [signatureEmpty, setSignatureEmpty] = useState(true);
-  const [agreed, setAgreed] = useState(false);
-  const [pricingAgreed, setPricingAgreed] = useState(false);
+  const [pricingAgreed, setPricingAgreed] = useState(true);
 
   const [status, setStatus] = useState<"idle" | "submitting" | "card_step" | "saving_card" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -878,10 +877,6 @@ function SubmissionForm() {
     }
     if (signatureEmpty || !signatureDataUrl) {
       setErrorMsg("Please draw your signature.");
-      return;
-    }
-    if (!agreed) {
-      setErrorMsg("Please confirm authorization to proceed.");
       return;
     }
     if (!pricingAgreed) {
@@ -1149,19 +1144,6 @@ function SubmissionForm() {
                   }}
                 />
               </div>
-
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1e5a8a] focus:ring-[#1e5a8a]/30"
-                />
-                <span className="text-sm text-gray-600 leading-relaxed">
-                  I confirm the information provided is true and accurate, and I authorize CreditRemovers to dispute
-                  items on my credit reports on my behalf.
-                </span>
-              </label>
 
               <label className="flex items-start gap-3 cursor-pointer group">
                 <input
