@@ -445,11 +445,54 @@ function formatPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+async function compressImageIfNeeded(file: File): Promise<File> {
+  // Only attempt to compress JPEG/PNG raster images. PDFs are passed through.
+  if (!/^image\/(jpeg|png)$/i.test(file.type)) return file;
+  // Files under 4MB are kept as-is (already reasonable for KMS-encrypted storage).
+  if (file.size <= 4 * 1024 * 1024) return file;
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Could not read file."));
+      reader.readAsDataURL(file);
+    });
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Could not decode image."));
+      i.src = dataUrl;
+    });
+    const MAX_DIM = 2200;
+    const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85)
+    );
+    if (!blob || blob.size >= file.size) return file;
+    const renamed = file.name.replace(/\.(png|jpe?g)$/i, ".jpg");
+    return new File([blob], renamed, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
+
 async function uploadSecureFile(file: File): Promise<UploadedDoc> {
+  const optimized = await compressImageIfNeeded(file);
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", optimized);
   const resp = await fetch("/api/secure-uploads", { method: "POST", body: fd });
   if (!resp.ok) {
+    if (resp.status === 413) {
+      throw new Error("File is too large. Please use a smaller image (max ~25MB).");
+    }
     const body = await resp.json().catch(() => ({}));
     throw new Error(body.message || `Upload failed (${resp.status})`);
   }
@@ -684,13 +727,26 @@ function SubmissionForm() {
   }, []);
 
   // ── Per-step validation ──
+  // Field label map used by the summary banner so error text is human-readable.
+  const FIELD_LABELS: Record<string, string> = {
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    phone: "Phone",
+    address: "Home Address",
+    dob: "Date of Birth",
+    ssn: "Social Security Number",
+  };
+
   const step1Errors = useMemo(() => {
     const errs: Partial<Record<keyof CreditRepairForm, string>> = {};
     if (!form.firstName.trim()) errs.firstName = "Required";
     if (!form.lastName.trim()) errs.lastName = "Required";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = "Enter a valid email";
     if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
-    if (form.address.trim().length < 5) errs.address = "Enter your full street address";
+    if (!form.address.trim()) errs.address = "Required";
+    else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
+    else if (form.address.trim().length < 5) errs.address = "Enter your full street address";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
     if (form.ssn.replace(/\D/g, "").length !== 9) errs.ssn = "Enter your 9-digit SSN";
     return errs;
@@ -701,12 +757,19 @@ function SubmissionForm() {
     return {} as Record<string, string>;
   }, [idDoc, utilityDoc, creditReportDoc]);
 
+  const [showStep1Errors, setShowStep1Errors] = useState(false);
+
   const goNext = () => {
     if (step === 1) {
       if (Object.keys(step1Errors).length > 0) {
-        setErrorMsg("Please complete all required fields.");
+        setShowStep1Errors(true);
+        const list = Object.keys(step1Errors)
+          .map((k) => FIELD_LABELS[k] || k)
+          .join(", ");
+        setErrorMsg(`Please fix: ${list}.`);
         return;
       }
+      setShowStep1Errors(false);
       setErrorMsg("");
       setStep(2);
       return;
@@ -879,22 +942,22 @@ function SubmissionForm() {
           {step === 1 && (
             <div className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="firstName" label="First Name" required>
+                <Field id="firstName" label="First Name" required error={showStep1Errors ? step1Errors.firstName : undefined}>
                   <input
                     id="firstName"
                     type="text"
                     autoComplete="given-name"
-                    className={inputClass}
+                    className={`${inputClass} ${showStep1Errors && step1Errors.firstName ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.firstName}
                     onChange={(e) => update("firstName", e.target.value)}
                   />
                 </Field>
-                <Field id="lastName" label="Last Name" required>
+                <Field id="lastName" label="Last Name" required error={showStep1Errors ? step1Errors.lastName : undefined}>
                   <input
                     id="lastName"
                     type="text"
                     autoComplete="family-name"
-                    className={inputClass}
+                    className={`${inputClass} ${showStep1Errors && step1Errors.lastName ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.lastName}
                     onChange={(e) => update("lastName", e.target.value)}
                   />
@@ -902,22 +965,22 @@ function SubmissionForm() {
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="email" label="Email" required>
+                <Field id="email" label="Email" required error={showStep1Errors ? step1Errors.email : undefined}>
                   <input
                     id="email"
                     type="email"
                     autoComplete="email"
-                    className={inputClass}
+                    className={`${inputClass} ${showStep1Errors && step1Errors.email ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
                   />
                 </Field>
-                <Field id="phone" label="Phone" required>
+                <Field id="phone" label="Phone" required error={showStep1Errors ? step1Errors.phone : undefined}>
                   <input
                     id="phone"
                     type="tel"
                     autoComplete="tel"
-                    className={inputClass}
+                    className={`${inputClass} ${showStep1Errors && step1Errors.phone ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.phone}
                     onChange={(e) => update("phone", formatPhone(e.target.value))}
                     placeholder="(555) 123-4567"
@@ -925,38 +988,47 @@ function SubmissionForm() {
                 </Field>
               </div>
 
-              <Field id="address" label="Home Address" required hint="street, city, state, zip">
+              <Field id="address" label="Home Address" required hint="street, city, state, zip" error={showStep1Errors ? step1Errors.address : undefined}>
                 <input
                   id="address"
                   type="text"
+                  inputMode="text"
                   autoComplete="street-address"
-                  className={inputClass}
+                  className={`${inputClass} ${showStep1Errors && step1Errors.address ? "border-red-300 ring-2 ring-red-100" : ""}`}
                   value={form.address}
-                  onChange={(e) => update("address", e.target.value)}
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    // First non-whitespace character must be a digit (street number).
+                    const trimmedStart = v.replace(/^\s+/, "");
+                    if (trimmedStart.length > 0 && !/^\d/.test(trimmedStart)) {
+                      v = trimmedStart.replace(/^\D+/, "");
+                    }
+                    update("address", v);
+                  }}
                   placeholder="123 Main St, Springfield, IL 62704"
                 />
               </Field>
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="dob" label="Date of Birth" required>
+                <Field id="dob" label="Date of Birth" required error={showStep1Errors ? step1Errors.dob : undefined}>
                   <input
                     id="dob"
                     type="date"
                     autoComplete="bday"
-                    className={inputClass}
+                    className={`${inputClass} ${showStep1Errors && step1Errors.dob ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.dob}
                     onChange={(e) => update("dob", e.target.value)}
                     max={new Date().toISOString().slice(0, 10)}
                   />
                 </Field>
-                <Field id="ssn" label="Social Security Number" required hint="encrypted">
+                <Field id="ssn" label="Social Security Number" required hint="encrypted" error={showStep1Errors ? step1Errors.ssn : undefined}>
                   <div className="relative">
                     <input
                       id="ssn"
                       type="text"
                       inputMode="numeric"
                       autoComplete="off"
-                      className={`${inputClass} pr-10 font-mono tracking-wider`}
+                      className={`${inputClass} pr-10 font-mono tracking-wider ${showStep1Errors && step1Errors.ssn ? "border-red-300 ring-2 ring-red-100" : ""}`}
                       value={maskSSN(form.ssn)}
                       onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 9))}
                       placeholder="123-45-6789"
@@ -1324,12 +1396,14 @@ function Field({
   label,
   required,
   hint,
+  error,
   children,
 }: {
   id: string;
   label: string;
   required?: boolean;
   hint?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -1340,6 +1414,9 @@ function Field({
         {hint && <span className="text-gray-400 font-normal ml-1.5">({hint})</span>}
       </label>
       {children}
+      {error && (
+        <p className="mt-1 text-xs text-red-600">{error}</p>
+      )}
     </div>
   );
 }

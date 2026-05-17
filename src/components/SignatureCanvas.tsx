@@ -105,11 +105,11 @@ const SignatureCanvas = forwardRef<SignatureCanvasHandle, SignatureCanvasProps>(
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       const dpr = dprRef.current;
-      ctx.save();
+      // Reset transform, wipe everything, then reapply ONLY the dpr scale so drawing
+      // remains aligned to CSS pixels (the previous version applied scale twice).
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.restore();
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
