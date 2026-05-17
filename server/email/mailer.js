@@ -123,7 +123,36 @@ module.exports = {
   sendSubmissionEmail,
   sendCheckoutSuccessEmail,
   resetTransporter,
+  buildAttachments,
 };
+
+function resolveLogoAttachmentPath(attachmentPath) {
+  const projectRoot = path.join(__dirname, "..", "..");
+
+  // Admin uploads are stored as public web paths, e.g. /uploads/logo.png.
+  // path.isAbsolute('/uploads/logo.png') is true on Linux, so this check must
+  // run before the generic absolute-path branch.
+  if (attachmentPath.startsWith("/uploads/") || attachmentPath.startsWith("/assets/")) {
+    return path.join(projectRoot, "public", attachmentPath.replace(/^\/+/, ""));
+  }
+
+  if (path.isAbsolute(attachmentPath)) {
+    return attachmentPath;
+  }
+
+  return path.resolve(__dirname, attachmentPath);
+}
+
+function guessLogoContentType(filePath, fallback) {
+  if (fallback) return fallback;
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".png") return "image/png";
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".svg") return "image/svg+xml";
+  return undefined;
+}
 
 async function buildAttachments(slug = "quote-autoresponse") {
   const { templateData } = await loadTemplateData(slug);
@@ -132,16 +161,7 @@ async function buildAttachments(slug = "quote-autoresponse") {
   const attachmentPath = templateData?.brand?.logoAttachmentPath;
 
   if (logoUrl && logoUrl.startsWith("cid:") && attachmentPath) {
-    const projectRoot = path.join(__dirname, "..", "..");
-    let absolutePath;
-    if (path.isAbsolute(attachmentPath)) {
-      absolutePath = attachmentPath;
-    } else if (attachmentPath.startsWith("/")) {
-      // public web path like "/uploads/foo.png" → <projectRoot>/public/uploads/foo.png
-      absolutePath = path.join(projectRoot, "public", attachmentPath.replace(/^\/+/, ""));
-    } else {
-      absolutePath = path.resolve(__dirname, attachmentPath);
-    }
+    const absolutePath = resolveLogoAttachmentPath(attachmentPath);
     if (!fs.existsSync(absolutePath)) {
       console.warn(`[email] Logo attachment not found: ${absolutePath}`);
       return attachments;
@@ -171,11 +191,11 @@ async function buildAttachments(slug = "quote-autoresponse") {
       }
     } else {
       attachments.push({
-        filename: "branding-image",
+        filename: path.basename(absolutePath) || "branding-image",
         path: absolutePath,
         cid,
         contentDisposition: "inline",
-        contentType: templateData.brand?.logoAttachmentType || undefined,
+        contentType: guessLogoContentType(absolutePath, templateData.brand?.logoAttachmentType),
       });
     }
   }
