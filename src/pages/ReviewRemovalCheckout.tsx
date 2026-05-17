@@ -731,11 +731,29 @@ function SubmissionForm() {
     fetch("/api/stripe-publishable-key")
       .then((r) => r.json())
       .then((d) => {
-        if (d?.publishableKey) setStripePromise(loadStripe(d.publishableKey));
-        else setErrorMsg("Stripe is not configured.");
+        if (d?.publishableKey) {
+          // Diagnostic: surface the Stripe mode + key prefix so a publishable/secret
+          // mismatch (e.g. live PK + test client_secret) can be spotted in DevTools.
+          console.log(
+            "[Stripe] mode=%s keyMode=%s pkPrefix=%s clientSecretPrefix=%s",
+            d.mode,
+            d.keyMode,
+            String(d.publishableKey).slice(0, 12),
+            clientSecret ? clientSecret.slice(0, 12) : "(not yet)"
+          );
+          if (d.mode && d.keyMode && d.mode !== d.keyMode) {
+            setErrorMsg(
+              `Stripe configuration mismatch: mode is "${d.mode}" but the publishable key looks like "${d.keyMode}". Please re-save your Stripe settings.`
+            );
+            return;
+          }
+          setStripePromise(loadStripe(d.publishableKey));
+        } else {
+          setErrorMsg("Stripe is not configured.");
+        }
       })
       .catch(() => setErrorMsg("Could not load payment provider."));
-  }, [status, stripePromise]);
+  }, [status, stripePromise, clientSecret]);
 
   const update = <K extends keyof CreditRepairForm>(key: K, value: CreditRepairForm[K]) => {
     setForm((p) => ({ ...p, [key]: value }));
@@ -1169,7 +1187,11 @@ function SubmissionForm() {
                 we begin work and you approve the engagement.
               </p>
               {stripePromise && clientSecret ? (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                // NOTE: Do NOT pass `clientSecret` in <Elements options>. That switches
+                // Elements into PaymentElement mode, which makes CardElement throw
+                // "could not retrieve data from the specified element" on confirm.
+                // For CardElement, clientSecret is only passed to stripe.confirmCardSetup().
+                <Elements stripe={stripePromise}>
                   <CardForm
                     clientSecret={clientSecret}
                     onSuccess={handleCardSaved}
@@ -1304,6 +1326,10 @@ function CardForm({
       });
 
       if (pmError) {
+        // Log full error to console for diagnostics. The Stripe "could not retrieve
+        // data from the specified element" error almost always means the publishable
+        // key on the page doesn't match the Stripe account that created the SetupIntent.
+        console.error("[Stripe createPaymentMethod error]", pmError);
         setErrorMsg(pmError.message || "Card verification failed.");
         onError(pmError.message || "Card verification failed.");
         setSaving(false);
@@ -1324,6 +1350,7 @@ function CardForm({
       });
 
       if (error) {
+        console.error("[Stripe confirmCardSetup error]", error);
         setErrorMsg(error.message || "Card verification failed.");
         onError(error.message || "Card verification failed.");
         setSaving(false);

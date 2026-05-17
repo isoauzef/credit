@@ -236,12 +236,23 @@ app.get("/api/checkout-submissions", async (req, res) => {
 });
 
 // ── Public: Stripe publishable key ──────────────────────────────
+function stripeKeyMode(key) {
+  if (typeof key !== "string") return "unknown";
+  if (key.startsWith("pk_live_") || key.startsWith("sk_live_")) return "live";
+  if (key.startsWith("pk_test_") || key.startsWith("sk_test_")) return "test";
+  return "unknown";
+}
+
 app.get("/api/stripe-publishable-key", (_req, res) => {
   const settings = getStripeSettings();
   const mode = settings.stripe_mode || "test";
   const pk = mode === "live" ? settings.stripe_live_publishable_key : settings.stripe_test_publishable_key;
   if (!pk) return res.status(500).json({ message: "Stripe not configured" });
-  return res.json({ publishableKey: pk });
+  return res.json({
+    publishableKey: pk,
+    mode,
+    keyMode: stripeKeyMode(pk),
+  });
 });
 
 // ── Public: price per review (cents) ────────────────────────────
@@ -317,6 +328,17 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   }
 
   try {
+    const settings = getStripeSettings();
+    const mode = settings.stripe_mode || "test";
+    const sk = mode === "live" ? settings.stripe_live_secret_key : settings.stripe_test_secret_key;
+    const pk = mode === "live" ? settings.stripe_live_publishable_key : settings.stripe_test_publishable_key;
+    console.log(
+      "[credit-repair] Stripe mode=%s skPrefix=%s pkPrefix=%s",
+      mode,
+      sk ? sk.slice(0, 12) : "none",
+      pk ? pk.slice(0, 12) : "none"
+    );
+
     customer = await stripe.customers.create({
       email: String(email),
       name: fullName.slice(0, 200),
