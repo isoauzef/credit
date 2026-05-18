@@ -89,7 +89,7 @@ async function sendSubmissionEmail(submission) {
   return info;
 }
 
-async function sendCheckoutSuccessEmail(submission) {
+async function sendCheckoutSuccessEmail(submission, portalCredentials = null) {
   const transporter = getTransporter();
   if (!transporter) {
     console.warn("[email] Skipping checkout-success email (SMTP not configured).");
@@ -97,7 +97,10 @@ async function sendCheckoutSuccessEmail(submission) {
   }
   if (!submission?.email) return null;
 
-  const result = await buildSubmissionEmail(submission, "checkout-success");
+  const result = await buildSubmissionEmail(
+    portalCredentials ? { ...submission, portalCredentials } : submission,
+    "checkout-success"
+  );
   if (!result) {
     console.warn("[email] Checkout success template disabled, skipping.");
     return null;

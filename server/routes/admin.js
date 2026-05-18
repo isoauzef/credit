@@ -2,6 +2,15 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const prisma = require("../db");
+const {
+  attachDashboardDocument,
+  buildPortalUrls,
+  ensureClientDashboardAccountForSubmission,
+  getAccountForSubmission,
+  getClientDashboardSnapshot,
+  updateBureauReport,
+  addDashboardUpdate,
+} = require("../helpers/clientDashboard");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me";
@@ -232,6 +241,88 @@ router.post("/checkout-submissions/:id/charge", async (req, res) => {
   } catch (err) {
     console.error("[admin] charge payment", err);
     return res.status(500).json({ message: err.message || "Charge failed" });
+  }
+});
+
+router.get("/checkout-submissions/:id/client-dashboard", async (req, res) => {
+  try {
+    const account = await getAccountForSubmission(req.params.id);
+    if (!account) return res.json({ account: null, dashboard: null });
+
+    const snapshot = await getClientDashboardSnapshot(account.id);
+    return res.json({
+      account: snapshot.account,
+      dashboard: snapshot,
+      portal: buildPortalUrls(req),
+    });
+  } catch (err) {
+    console.error("[admin] client dashboard load", err);
+    return res.status(err.statusCode || 500).json({ message: err.message || "Failed to load client dashboard" });
+  }
+});
+
+router.post("/checkout-submissions/:id/client-dashboard-account", async (req, res) => {
+  try {
+    const result = await ensureClientDashboardAccountForSubmission(req.params.id, {
+      resetPassword: Boolean(req.body?.resetPassword),
+    });
+    const snapshot = await getClientDashboardSnapshot(result.account.id);
+    return res.json({
+      account: snapshot.account,
+      dashboard: snapshot,
+      portal: {
+        ...buildPortalUrls(req),
+        email: result.account.email,
+        temporaryPassword: result.temporaryPassword,
+        created: result.created,
+        passwordReset: result.passwordReset,
+      },
+    });
+  } catch (err) {
+    console.error("[admin] client dashboard account", err);
+    return res.status(err.statusCode || 500).json({ message: err.message || "Could not create dashboard account" });
+  }
+});
+
+router.put("/checkout-submissions/:id/client-dashboard/reports/:bureau", async (req, res) => {
+  try {
+    const account = await getAccountForSubmission(req.params.id);
+    if (!account) return res.status(404).json({ message: "Client dashboard account has not been created yet." });
+
+    await updateBureauReport(account.id, req.params.bureau, req.body);
+    const snapshot = await getClientDashboardSnapshot(account.id);
+    return res.json({ dashboard: snapshot });
+  } catch (err) {
+    console.error("[admin] bureau report update", err);
+    return res.status(err.statusCode || 500).json({ message: err.message || "Could not update bureau report" });
+  }
+});
+
+router.post("/checkout-submissions/:id/client-dashboard/updates", async (req, res) => {
+  try {
+    const account = await getAccountForSubmission(req.params.id);
+    if (!account) return res.status(404).json({ message: "Client dashboard account has not been created yet." });
+
+    await addDashboardUpdate(account.id, req.body);
+    const snapshot = await getClientDashboardSnapshot(account.id);
+    return res.status(201).json({ dashboard: snapshot });
+  } catch (err) {
+    console.error("[admin] dashboard update log", err);
+    return res.status(err.statusCode || 500).json({ message: err.message || "Could not save update" });
+  }
+});
+
+router.post("/checkout-submissions/:id/client-dashboard/documents", async (req, res) => {
+  try {
+    const account = await getAccountForSubmission(req.params.id);
+    if (!account) return res.status(404).json({ message: "Client dashboard account has not been created yet." });
+
+    await attachDashboardDocument(account.id, req.body, "admin");
+    const snapshot = await getClientDashboardSnapshot(account.id);
+    return res.status(201).json({ dashboard: snapshot });
+  } catch (err) {
+    console.error("[admin] dashboard document attach", err);
+    return res.status(err.statusCode || 500).json({ message: err.message || "Could not save document" });
   }
 });
 

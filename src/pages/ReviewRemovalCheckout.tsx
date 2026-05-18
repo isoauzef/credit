@@ -429,6 +429,21 @@ interface UploadedDoc {
   size: number;
 }
 
+interface PortalCredentials {
+  email: string;
+  temporaryPassword: string | null;
+  loginUrl: string;
+  dashboardUrl: string;
+  created: boolean;
+  passwordReset: boolean;
+}
+
+type EmailAvailability = {
+  status: "idle" | "checking" | "available" | "exists" | "error";
+  checkedEmail?: string;
+  message?: string;
+};
+
 function maskSSN(raw: string): string {
   // Display SSN as ***-**-#### when more than 4 digits typed (only when not focused later)
   const digits = raw.replace(/\D/g, "").slice(0, 9);
@@ -710,6 +725,8 @@ function SubmissionForm() {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [setupIntentId, setSetupIntentId] = useState("");
+  const [portalCredentials, setPortalCredentials] = useState<PortalCredentials | null>(null);
+  const [emailCheck, setEmailCheck] = useState<EmailAvailability>({ status: "idle" });
 
   // Scroll-to-top of the form card whenever step (or the card_step status) changes
   const formCardRef = useRef<HTMLDivElement | null>(null);
@@ -756,6 +773,10 @@ function SubmissionForm() {
 
   const update = <K extends keyof CreditRepairForm>(key: K, value: CreditRepairForm[K]) => {
     setForm((p) => ({ ...p, [key]: value }));
+    if (key === "email") {
+      setEmailCheck({ status: "idle" });
+      setErrorMsg("");
+    }
   };
 
   const todayStr = useMemo(() => {
@@ -775,11 +796,46 @@ function SubmissionForm() {
     ssn: "Social Security Number",
   };
 
+  const duplicateEmailMessage =
+    "An application already exists for this email address. Please log in to your client dashboard or contact support.";
+
+  const checkEmailAvailability = useCallback(async () => {
+    const normalizedEmail = form.email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) {
+      return "invalid" as const;
+    }
+
+    setEmailCheck({ status: "checking", checkedEmail: normalizedEmail });
+    try {
+      const resp = await fetch(`/api/credit-repair-checkout/email-exists?email=${encodeURIComponent(normalizedEmail)}`);
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        throw new Error(data?.message || "Could not check this email right now.");
+      }
+      if (data?.exists) {
+        setEmailCheck({ status: "exists", checkedEmail: normalizedEmail, message: duplicateEmailMessage });
+        setErrorMsg(duplicateEmailMessage);
+        return "exists" as const;
+      }
+      setEmailCheck({ status: "available", checkedEmail: normalizedEmail });
+      return "available" as const;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not check this email right now.";
+      setEmailCheck({ status: "error", checkedEmail: normalizedEmail, message });
+      setErrorMsg(message);
+      return "error" as const;
+    }
+  }, [form.email]);
+
   const step1Errors = useMemo(() => {
     const errs: Partial<Record<keyof CreditRepairForm, string>> = {};
     if (!form.firstName.trim()) errs.firstName = "Required";
     if (!form.lastName.trim()) errs.lastName = "Required";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = "Enter a valid email";
+    const normalizedEmail = form.email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) errs.email = "Enter a valid email";
+    else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "checking") errs.email = "Checking email...";
+    else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "exists") errs.email = emailCheck.message || duplicateEmailMessage;
+    else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "error") errs.email = emailCheck.message || "Could not check this email right now.";
     if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
     if (!form.address.trim()) errs.address = "Required";
     else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
@@ -787,7 +843,7 @@ function SubmissionForm() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
     if (form.ssn.replace(/\D/g, "").length !== 9) errs.ssn = "Enter your 9-digit SSN";
     return errs;
-  }, [form]);
+  }, [duplicateEmailMessage, emailCheck, form]);
 
   const step2Errors = useMemo(() => {
     // All uploads optional — keep memo for future hard validation hooks.
@@ -796,11 +852,27 @@ function SubmissionForm() {
 
   const [showStep1Errors, setShowStep1Errors] = useState(false);
 
-  const goNext = () => {
+  const goNext = async () => {
     if (step === 1) {
-      if (Object.keys(step1Errors).length > 0) {
+      let currentStep1Errors = step1Errors;
+      const normalizedEmail = form.email.trim().toLowerCase();
+      if (
+        /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail) &&
+        !(emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "available")
+      ) {
+        const result = await checkEmailAvailability();
+        if (result === "exists" || result === "error") {
+          setShowStep1Errors(true);
+          return;
+        }
+        if (result === "available" && currentStep1Errors.email === "Checking email...") {
+          currentStep1Errors = { ...currentStep1Errors };
+          delete currentStep1Errors.email;
+        }
+      }
+      if (Object.keys(currentStep1Errors).length > 0) {
         setShowStep1Errors(true);
-        const list = Object.keys(step1Errors)
+        const list = Object.keys(currentStep1Errors)
           .map((k) => FIELD_LABELS[k] || k)
           .join(", ");
         setErrorMsg(`Please fix: ${list}.`);
@@ -921,11 +993,15 @@ function SubmissionForm() {
 
   const handleCardSaved = async (intentId: string) => {
     try {
-      await fetch("/api/finalize-checkout", {
+      const resp = await fetch("/api/finalize-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ setupIntentId: intentId }),
       });
+      const data = await resp.json().catch(() => null);
+      if (data?.portal) {
+        setPortalCredentials(data.portal);
+      }
     } catch (_) {
       /* non-blocking */
     }
@@ -933,6 +1009,12 @@ function SubmissionForm() {
   };
 
   // ── Success screen ──
+  const currentNormalizedEmail = form.email.trim().toLowerCase();
+  const shouldShowEmailCheck =
+    emailCheck.checkedEmail === currentNormalizedEmail &&
+    (emailCheck.status === "checking" || emailCheck.status === "exists" || emailCheck.status === "error");
+  const emailFieldError = showStep1Errors || shouldShowEmailCheck ? step1Errors.email : undefined;
+
   if (status === "success") {
     return (
       <section id="submit" className="py-16 lg:py-24 bg-gradient-to-b from-gray-50 to-white">
@@ -950,6 +1032,39 @@ function SubmissionForm() {
           <p className="text-gray-500 text-sm mt-6">
             A confirmation email is on its way to <span className="font-medium">{form.email}</span>.
           </p>
+          {portalCredentials && (
+            <div className="mt-8 text-left rounded-2xl border border-blue-100 bg-white p-5 shadow-lg shadow-blue-900/5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-5 h-5 text-[#1e5a8a]" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-gray-900">Client Dashboard Login</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Use this dashboard to upload missing documents and follow credit repair updates.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 text-sm">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-400">Email</p>
+                  <p className="font-medium text-gray-900 break-words">{portalCredentials.email}</p>
+                </div>
+                {portalCredentials.temporaryPassword && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Temporary Password</p>
+                    <p className="font-mono font-semibold text-gray-900 break-all">{portalCredentials.temporaryPassword}</p>
+                  </div>
+                )}
+              </div>
+              <a
+                href={portalCredentials.loginUrl || "/client-login"}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e5a8a] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-[#17466d] transition"
+              >
+                Open Client Dashboard <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          )}
         </div>
       </section>
     );
@@ -998,14 +1113,15 @@ function SubmissionForm() {
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="email" label="Email" required error={showStep1Errors ? step1Errors.email : undefined}>
+                <Field id="email" label="Email" required error={emailFieldError}>
                   <input
                     id="email"
                     type="email"
                     autoComplete="email"
-                    className={`${inputClass} ${showStep1Errors && step1Errors.email ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    className={`${inputClass} ${emailFieldError ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.email}
                     onChange={(e) => update("email", e.target.value)}
+                    onBlur={() => { void checkEmailAvailability(); }}
                   />
                 </Field>
                 <Field id="phone" label="Phone" required error={showStep1Errors ? step1Errors.phone : undefined}>

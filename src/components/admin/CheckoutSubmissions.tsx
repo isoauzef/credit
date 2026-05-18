@@ -1,12 +1,54 @@
-import { useState } from "react";
+import { FormEvent, Fragment, useState } from "react";
 import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
-import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon } from "lucide-react";
+import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
   authorized: "bg-blue-500/20 text-blue-400",
   captured: "bg-emerald-500/20 text-emerald-400",
+  card_saved: "bg-emerald-500/20 text-emerald-400",
+  charged: "bg-emerald-500/20 text-emerald-400",
+  refunded: "bg-slate-700 text-slate-300",
   canceled: "bg-red-500/20 text-red-400",
+};
+
+type AdminBureauReport = {
+  bureau: string;
+  name: string;
+  score: number;
+  scoreDate: string | null;
+  negativeItems: number;
+  disputes: number;
+  deletions: number;
+  positivesNote: string;
+  reportDocPath: string | null;
+  reportUploadedAt: string | null;
+};
+
+type AdminDashboardSnapshot = {
+  account: { id: number; email: string; createdAt: string | null };
+  client: { name: string; email: string };
+  documents: {
+    readyToStart: boolean;
+    required: Array<{ key: string; label: string; uploaded: boolean; uploadedAt: string | null }>;
+    extra: Array<{ id: number; label: string; originalName: string | null; createdAt: string }>;
+  };
+  bureauReports: AdminBureauReport[];
+  totals: { negativeItems: number; disputes: number; deletions: number };
+  updates: Array<{ id: number; title: string; body: string; createdBy: string; disputes: number | null; deletions: number | null; createdAt: string }>;
+};
+
+type ClientDashboardAdminResponse = {
+  account: AdminDashboardSnapshot["account"] | null;
+  dashboard: AdminDashboardSnapshot | null;
+  portal?: {
+    loginUrl?: string;
+    dashboardUrl?: string;
+    email?: string;
+    temporaryPassword?: string | null;
+    created?: boolean;
+    passwordReset?: boolean;
+  };
 };
 
 function formatDate(iso: string) {
@@ -19,6 +61,209 @@ function formatDate(iso: string) {
   }
 }
 
+function dateInputValue(value: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+async function uploadDashboardFile(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const resp = await fetch("/api/secure-uploads", { method: "POST", body: fd });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data?.message || "Upload failed");
+  return data as { token: string; originalName: string; mimeType: string; size: number };
+}
+
+function ClientDashboardAdminPanel({
+  submissionId,
+  state,
+  loading,
+  temporaryPassword,
+  onCreateAccount,
+  onResetPassword,
+  onSaveReport,
+  onAddUpdate,
+}: {
+  submissionId: number;
+  state?: ClientDashboardAdminResponse;
+  loading: boolean;
+  temporaryPassword?: string;
+  onCreateAccount: (id: number) => void;
+  onResetPassword: (id: number) => void;
+  onSaveReport: (id: number, bureau: string, form: HTMLFormElement) => void;
+  onAddUpdate: (id: number, form: HTMLFormElement) => void;
+}) {
+  if (loading && !state) {
+    return (
+      <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-4 text-sm text-slate-400">
+        Loading client dashboard...
+      </div>
+    );
+  }
+
+  if (!state?.dashboard) {
+    return (
+      <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Client Dashboard</h4>
+            <p className="mt-1 text-sm text-slate-400">No client login has been created for this submission yet.</p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onCreateAccount(submissionId); }}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
+          >
+            <KeyRound size={14} /> Create Client Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const dashboard = state.dashboard;
+
+  return (
+    <div className="space-y-5 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Client Dashboard</h4>
+          <p className="mt-1 text-sm text-slate-300">
+            Login email: <span className="font-medium text-white">{dashboard.account.email}</span>
+          </p>
+          {state.portal?.loginUrl && (
+            <a
+              href={state.portal.loginUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="mt-1 inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
+            >
+              Open client login <ExternalLink size={12} />
+            </a>
+          )}
+          {temporaryPassword && (
+            <div className="mt-3 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              Temporary password: <span className="font-mono font-semibold">{temporaryPassword}</span>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onResetPassword(submissionId); }}
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700"
+        >
+          <KeyRound size={14} /> Reset Password
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {dashboard.documents.required.map((doc) => (
+          <div key={doc.key} className="rounded-md bg-slate-900 px-3 py-2 text-xs">
+            <p className="font-medium text-slate-200">{doc.label}</p>
+            <p className={doc.uploaded ? "text-emerald-400" : "text-red-400"}>
+              {doc.uploaded ? `Uploaded ${doc.uploadedAt ? formatDate(doc.uploadedAt) : ""}` : "Missing"}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Credit Bureau Reports</h5>
+        <div className="grid gap-3 xl:grid-cols-3">
+          {dashboard.bureauReports.map((report) => (
+            <form
+              key={`${report.bureau}-${report.score}-${report.scoreDate}-${report.reportDocPath || "none"}`}
+              onSubmit={(e: FormEvent<HTMLFormElement>) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSaveReport(submissionId, report.bureau, e.currentTarget);
+              }}
+              className="space-y-3 rounded-md border border-slate-800 bg-slate-900/70 p-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-white">{report.name}</p>
+                <span className={report.reportDocPath ? "text-xs text-emerald-400" : "text-xs text-slate-500"}>
+                  {report.reportDocPath ? "Report uploaded" : "No report"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs text-slate-400">
+                  Score
+                  <input name="score" type="number" min="0" max="850" defaultValue={report.score} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Score Date
+                  <input name="scoreDate" type="date" defaultValue={dateInputValue(report.scoreDate)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Negative
+                  <input name="negativeItems" type="number" min="0" defaultValue={report.negativeItems} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Disputes
+                  <input name="disputes" type="number" min="0" defaultValue={report.disputes} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Deleted
+                  <input name="deletions" type="number" min="0" defaultValue={report.deletions} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Report PDF/Image
+                  <input name="reportFile" type="file" accept="image/jpeg,image/png,application/pdf" className="mt-1 block w-full text-xs text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:text-slate-100" />
+                </label>
+              </div>
+              <label className="block text-xs text-slate-400">
+                Positive History
+                <textarea name="positivesNote" defaultValue={report.positivesNote} rows={2} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+              </label>
+              <button type="submit" className="inline-flex items-center gap-2 rounded bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400">
+                <Save size={14} /> Save {report.name}
+              </button>
+            </form>
+          ))}
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onAddUpdate(submissionId, e.currentTarget);
+        }}
+        className="rounded-md border border-slate-800 bg-slate-900/70 p-3"
+      >
+        <h5 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Post Client Update</h5>
+        <div className="grid gap-2 sm:grid-cols-4">
+          <input name="title" placeholder="Update title" className="rounded bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400 sm:col-span-2" />
+          <input name="disputes" type="number" min="0" placeholder="Disputes" className="rounded bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+          <input name="deletions" type="number" min="0" placeholder="Deleted" className="rounded bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+          <textarea name="body" placeholder="What should the client see?" rows={3} className="rounded bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400 sm:col-span-4" />
+        </div>
+        <button type="submit" className="mt-3 inline-flex items-center gap-2 rounded bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400">
+          <PlusCircle size={14} /> Add Update
+        </button>
+      </form>
+
+      {dashboard.updates.length > 0 && (
+        <div className="space-y-2">
+          <h5 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Recent Client Updates</h5>
+          {dashboard.updates.slice(0, 3).map((update) => (
+            <div key={update.id} className="rounded-md bg-slate-900 px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-slate-100">{update.title}</span>
+                <span className="text-xs text-slate-500">{formatDate(update.createdAt)}</span>
+              </div>
+              <p className="mt-1 text-slate-400">{update.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CheckoutSubmissions() {
   const { data, loading, reload, mutate } = useAdminApi<CheckoutSubmission[]>(
     "/api/admin/checkout-submissions"
@@ -28,6 +273,9 @@ export default function CheckoutSubmissions() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [revealedSsn, setRevealedSsn] = useState<Record<number, string>>({});
   const [signatures, setSignatures] = useState<Record<number, { signatureDataUrl: string | null; signedAt: string | null; authLetterSnapshot: string | null }>>({});
+  const [clientDashboards, setClientDashboards] = useState<Record<number, ClientDashboardAdminResponse>>({});
+  const [dashboardPasswords, setDashboardPasswords] = useState<Record<number, string>>({});
+  const [dashboardLoading, setDashboardLoading] = useState<Record<number, boolean>>({});
 
   const revealSSN = async (id: number) => {
     if (revealedSsn[id]) {
@@ -58,6 +306,107 @@ export default function CheckoutSubmissions() {
     } catch (_) { /* ignore */ }
   };
 
+  const loadClientDashboard = async (id: number) => {
+    if (!token) return;
+    setDashboardLoading((p) => ({ ...p, [id]: true }));
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/client-dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message || "Could not load client dashboard");
+      setClientDashboards((p) => ({ ...p, [id]: data }));
+    } catch (e: any) {
+      alert(e.message || "Could not load client dashboard");
+    } finally {
+      setDashboardLoading((p) => ({ ...p, [id]: false }));
+    }
+  };
+
+  const upsertClientAccount = async (id: number, resetPassword = false) => {
+    if (!token) return;
+    setDashboardLoading((p) => ({ ...p, [id]: true }));
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/client-dashboard-account`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ resetPassword }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message || "Could not create client account");
+      setClientDashboards((p) => ({ ...p, [id]: data }));
+      if (data?.portal?.temporaryPassword) {
+        setDashboardPasswords((p) => ({ ...p, [id]: data.portal.temporaryPassword }));
+      }
+    } catch (e: any) {
+      alert(e.message || "Could not update client account");
+    } finally {
+      setDashboardLoading((p) => ({ ...p, [id]: false }));
+    }
+  };
+
+  const saveBureauReport = async (id: number, bureau: string, form: HTMLFormElement) => {
+    if (!token) return;
+    const formData = new FormData(form);
+    const file = formData.get("reportFile");
+    const payload: Record<string, unknown> = {
+      score: formData.get("score"),
+      scoreDate: formData.get("scoreDate"),
+      negativeItems: formData.get("negativeItems"),
+      disputes: formData.get("disputes"),
+      deletions: formData.get("deletions"),
+      positivesNote: formData.get("positivesNote"),
+    };
+
+    setDashboardLoading((p) => ({ ...p, [id]: true }));
+    try {
+      if (file instanceof File && file.size > 0) {
+        const uploaded = await uploadDashboardFile(file);
+        payload.reportDocToken = uploaded.token;
+      }
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/client-dashboard/reports/${bureau}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message || "Could not save report");
+      setClientDashboards((p) => ({ ...p, [id]: { ...(p[id] || {}), dashboard: data.dashboard, account: data.dashboard.account } }));
+    } catch (e: any) {
+      alert(e.message || "Could not save report");
+    } finally {
+      setDashboardLoading((p) => ({ ...p, [id]: false }));
+    }
+  };
+
+  const addClientUpdate = async (id: number, form: HTMLFormElement) => {
+    if (!token) return;
+    const formData = new FormData(form);
+    const payload = {
+      title: formData.get("title"),
+      body: formData.get("body"),
+      disputes: formData.get("disputes"),
+      deletions: formData.get("deletions"),
+      createdBy: "Zack",
+    };
+    setDashboardLoading((p) => ({ ...p, [id]: true }));
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/client-dashboard/updates`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message || "Could not add update");
+      setClientDashboards((p) => ({ ...p, [id]: { ...(p[id] || {}), dashboard: data.dashboard, account: data.dashboard.account } }));
+      form.reset();
+    } catch (e: any) {
+      alert(e.message || "Could not add update");
+    } finally {
+      setDashboardLoading((p) => ({ ...p, [id]: false }));
+    }
+  };
+
   const downloadSecureFile = async (token2: string) => {
     if (!token) return;
     const resp = await fetch(`/api/secure-uploads/${token2}`, {
@@ -83,7 +432,7 @@ export default function CheckoutSubmissions() {
     if (!confirm("Capture this payment? This will charge the customer's card.")) return;
     setCapturing(id);
     try {
-      await mutate("POST", undefined, `/${id}/capture`);
+      await mutate("POST", undefined, `/${id}/charge`);
       reload();
     } catch (e: any) {
       alert(e.message || "Capture failed");
@@ -141,8 +490,8 @@ export default function CheckoutSubmissions() {
                     ? s.reviewLinks.map((r: any) => (typeof r === "string" ? { link: r } : r))
                     : [];
                   return (
-                  <> 
-                  <tr key={s.id} className="hover:bg-slate-800/50 cursor-pointer" onClick={() => { const nextId = isExpanded ? null : s.id; setExpandedId(nextId); if (nextId) loadSignature(s.id); }}>
+                  <Fragment key={s.id}>
+                  <tr className="hover:bg-slate-800/50 cursor-pointer" onClick={() => { const nextId = isExpanded ? null : s.id; setExpandedId(nextId); if (nextId) { loadSignature(s.id); loadClientDashboard(s.id); } }}>
                     <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
                       {formatDate(s.createdAt)}
                     </td>
@@ -204,7 +553,7 @@ export default function CheckoutSubmissions() {
                   </tr>
                   {isExpanded && (
                     <tr>
-                      <td colSpan={8} className="bg-slate-900/50 px-6 py-5">
+                      <td colSpan={9} className="bg-slate-900/50 px-6 py-5">
                         <div className="space-y-5">
                           {/* Selected Reviews */}
                           {reviews.length > 0 && (
@@ -364,11 +713,22 @@ export default function CheckoutSubmissions() {
                               </div>
                             </div>
                           )}
+
+                          <ClientDashboardAdminPanel
+                            submissionId={s.id}
+                            state={clientDashboards[s.id]}
+                            loading={Boolean(dashboardLoading[s.id])}
+                            temporaryPassword={dashboardPasswords[s.id]}
+                            onCreateAccount={(id) => upsertClientAccount(id)}
+                            onResetPassword={(id) => upsertClientAccount(id, true)}
+                            onSaveReport={saveBureauReport}
+                            onAddUpdate={addClientUpdate}
+                          />
                         </div>
                       </td>
                     </tr>
                   )}
-                  </>
+                  </Fragment>
                   );
                 })
               )}

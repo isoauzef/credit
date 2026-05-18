@@ -82,7 +82,7 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
       <nav
         aria-label="Primary"
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled || isMenuOpen
+          minimal || scrolled || isMenuOpen
             ? "bg-slate-900/90 backdrop-blur-md shadow-lg border-b border-white/10"
             : "bg-transparent"
         }`}
@@ -90,7 +90,7 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
             className={`flex items-center justify-between transition-all duration-300 ${
-              scrolled ? "h-16" : "h-20"
+              minimal || scrolled ? "h-16" : "h-20"
             }`}
           >
             {/* Wordmark */}
@@ -127,12 +127,12 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
                     Get Started
                   </a>
                   <a
-                    href="/admin"
-                    aria-label="Login to your account"
+                    href="/client-login"
+                    aria-label="Login to your client dashboard"
                     className={`inline-flex items-center gap-2 text-white px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 border border-white/20 ${focusRing}`}
                   >
                     <User className="h-4 w-4" aria-hidden="true" />
-                    Login
+                    Client Login
                   </a>
                 </div>
 
@@ -188,13 +188,13 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
                   Get Started
                 </a>
                 <a
-                  href="/admin"
+                  href="/client-login"
                   onClick={closeMenu}
-                  aria-label="Login to your account"
+                  aria-label="Login to your client dashboard"
                   className={`flex w-full items-center justify-center gap-2 min-h-[44px] text-white px-6 py-3 rounded-full text-base shadow-md bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 border border-white/20 ${focusRing}`}
                 >
                   <User className="h-4 w-4" aria-hidden="true" />
-                  Login
+                  Client Login
                 </a>
               </div>
             </div>

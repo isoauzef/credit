@@ -4,6 +4,8 @@ import App from "./App";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import ReviewRemovalCheckout from "./pages/ReviewRemovalCheckout";
+import ClientDashboard from "./pages/ClientDashboard";
+import ClientLogin from "./pages/ClientLogin";
 import { AdminAuthProvider } from "./hooks/useAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
 import DashboardHome from "./components/admin/DashboardHome";
@@ -32,6 +34,14 @@ const router = createBrowserRouter([
   {
     path: "/checkout",
     element: <ReviewRemovalCheckout />,
+  },
+  {
+    path: "/client-login",
+    element: <ClientLogin />,
+  },
+  {
+    path: "/client-dashboard",
+    element: <ClientDashboard />,
   },
   {
     path: "/admin",

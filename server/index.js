@@ -13,7 +13,12 @@ const { getBusinessReviews, geolocateIp } = require("./services/serpapi");
 const { searchPlaces } = require("./services/google-places");
 const adminRoutes = require("./routes/admin");
 const secureUploadsRoutes = require("./routes/secure-uploads");
+const clientDashboardRoutes = require("./routes/client-dashboard");
 const { encryptPII, decryptPII, isKmsConfigured } = require("./helpers/encryption");
+const {
+  buildPortalUrls,
+  ensureClientDashboardAccountForSubmission,
+} = require("./helpers/clientDashboard");
 
 const app = express();
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3001);
@@ -57,19 +62,6 @@ app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), async
             paymentStatus: "card_saved",
           },
         });
-        // Send checkout success email if enabled
-        if (await isEmailEnabled("checkout-success")) {
-          const sub = await prisma.checkoutSubmission.findFirst({
-            where: { stripeSetupIntentId: si.id },
-          });
-          if (sub) {
-            try {
-              await sendCheckoutSuccessEmail(sub);
-            } catch (e) {
-              console.error("[email] checkout success email failed:", e.message);
-            }
-          }
-        }
         break;
       }
       case "payment_intent.succeeded": {
@@ -285,6 +277,24 @@ app.get("/api/payment-method-funding", async (req, res) => {
 });
 
 // ── Credit-repair checkout: save PII + uploads + signature + SetupIntent ──
+app.get("/api/credit-repair-checkout/email-exists", async (req, res) => {
+  const email = String(req.query.email || "").trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ message: "Enter a valid email address." });
+  }
+
+  try {
+    const existing = await prisma.checkoutSubmission.findFirst({
+      where: { email },
+      select: { id: true },
+    });
+    return res.json({ exists: Boolean(existing) });
+  } catch (err) {
+    console.error("[credit-repair] duplicate email check failed:", err);
+    return res.status(500).json({ message: "Could not check this email right now." });
+  }
+});
+
 app.post("/api/credit-repair-checkout", async (req, res) => {
   const stripe = getStripe();
   if (!stripe) {
@@ -331,6 +341,23 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
     return res.status(413).json({ message: "Signature image too large." });
   }
 
+  const normalizedEmail = String(email).trim().toLowerCase();
+  try {
+    const existing = await prisma.checkoutSubmission.findFirst({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
+    if (existing) {
+      return res.status(409).json({
+        message: "An application already exists for this email address. Please log in to your client dashboard or contact support.",
+        fields: ["email"],
+      });
+    }
+  } catch (err) {
+    console.error("[credit-repair] duplicate email submit check failed:", err);
+    return res.status(500).json({ message: "Could not verify this email address. Please try again." });
+  }
+
   const fullName = `${String(firstName).trim()} ${String(lastName).trim()}`.trim();
   let customer = null;
   let setupIntent = null;
@@ -357,7 +384,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
     );
 
     customer = await stripe.customers.create({
-      email: String(email),
+      email: normalizedEmail,
       name: fullName.slice(0, 200),
       phone: String(phone).slice(0, 50),
       address: { line1: String(address).slice(0, 500) },
@@ -377,7 +404,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
     const submission = await prisma.checkoutSubmission.create({
       data: {
         name: fullName,
-        email: String(email),
+        email: normalizedEmail,
         phone: String(phone).slice(0, 50),
         address: String(address).slice(0, 500),
         dob: String(dob),
@@ -574,7 +601,7 @@ app.post("/api/finalize-checkout", async (req, res) => {
     }
 
     // Persist payment method id + status in our DB
-    await prisma.checkoutSubmission.update({
+    const updatedSubmission = await prisma.checkoutSubmission.update({
       where: { id: submission.id },
       data: {
         stripePaymentMethodId: paymentMethodId || submission.stripePaymentMethodId,
@@ -613,7 +640,31 @@ app.post("/api/finalize-checkout", async (req, res) => {
       }
     }
 
-    return res.json({ ok: true });
+    let portal = null;
+    try {
+      const portalResult = await ensureClientDashboardAccountForSubmission(submission.id);
+      const urls = buildPortalUrls(req);
+      portal = {
+        email: portalResult.account.email,
+        temporaryPassword: portalResult.temporaryPassword,
+        created: portalResult.created,
+        passwordReset: portalResult.passwordReset,
+        loginUrl: urls.loginUrl,
+        dashboardUrl: urls.dashboardUrl,
+      };
+
+      if (await isEmailEnabled("checkout-success")) {
+        try {
+          await sendCheckoutSuccessEmail(updatedSubmission, portal);
+        } catch (e) {
+          console.error("[email] checkout success email failed:", e.message);
+        }
+      }
+    } catch (e) {
+      console.error("[client-dashboard] account creation failed:", e.message);
+    }
+
+    return res.json({ ok: true, portal });
   } catch (err) {
     console.error("[finalize] error:", err);
     return res.status(500).json({ message: "Could not finalize checkout." });
@@ -711,6 +762,7 @@ app.get("/api/google/reviews/:id", async (req, res) => {
 // ── Admin API routes ────────────────────────────────────────────
 app.use("/api/admin", adminRoutes);
 app.use("/api/secure-uploads", secureUploadsRoutes);
+app.use("/api/client", clientDashboardRoutes);
 
 // ── Serve uploaded files (logos, favicons, etc.) ────────────────
 const uploadsDir = path.join(__dirname, "..", "public", "uploads");

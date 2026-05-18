@@ -132,6 +132,30 @@ function formatPhoneHref(phoneNumber) {
   return phoneNumber ? phoneNumber.replace(/[^\d+]/g, "") : "";
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildPortalCredentialsHtml(credentials, templateData) {
+  if (!credentials?.email || !credentials?.temporaryPassword) return "";
+  const loginUrl = credentials.loginUrl || "/client-login";
+  const primary = templateData.brand?.primaryColor || "#1e5a8a";
+  const text = templateData.brand?.textColor || "#111827";
+  return `
+    <div style="margin:24px 0;padding:18px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;">
+      <h2 style="margin:0 0 10px;font-size:18px;line-height:1.4;color:${primary};">Client Dashboard Login</h2>
+      <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${text};">Your client dashboard is ready. Use these temporary credentials to check document status, credit bureau scores, and case updates.</p>
+      <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${text};"><strong>Login:</strong> <a href="${escapeHtml(loginUrl)}" style="color:${primary};text-decoration:none;">${escapeHtml(loginUrl)}</a></p>
+      <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:${text};"><strong>Email:</strong> ${escapeHtml(credentials.email)}</p>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:${text};"><strong>Temporary Password:</strong> ${escapeHtml(credentials.temporaryPassword)}</p>
+    </div>
+  `;
+}
+
 function getInterpolatedArray(values = [], ctx) {
   return values.map(value => interpolate(value, ctx));
 }
@@ -171,6 +195,7 @@ async function buildEmailHtml(submission, slug = "quote-autoresponse") {
   const assuranceHtml = buildParagraphs(templateData.serviceAssurances, ctx);
   const proofHtml = buildParagraphs(templateData.proofPoints, ctx);
   const faqHtml = buildFaqBlocks(templateData.faqs, ctx, templateData);
+  const portalCredentialsHtml = buildPortalCredentialsHtml(submission?.portalCredentials, templateData);
 
   const html = `<!DOCTYPE html>
   <html lang="en">
@@ -206,6 +231,7 @@ async function buildEmailHtml(submission, slug = "quote-autoresponse") {
                     <p style="margin-top:0;font-size:16px;line-height:1.6;">${greeting}</p>
                     ${introHtml}
                     ${templateData.hero.callout ? `<p style="font-size:16px;line-height:1.7;margin-bottom:24px;color:${templateData.brand.primaryColor};font-weight:bold;">${templateData.hero.callout}</p>` : ""}
+                    ${portalCredentialsHtml}
                     <div style="margin-bottom:24px;">
                       ${templateData.hero.heading ? `<h2 style="margin:0 0 4px;font-size:20px;line-height:1.4;color:${templateData.brand.primaryColor};">${templateData.hero.heading}</h2>` : ""}
                       ${templateData.hero.subheading ? `<p style="margin:0;font-size:15px;line-height:1.6;color:${templateData.brand.textColor};">${templateData.hero.subheading}</p>` : ""}
@@ -246,6 +272,13 @@ async function buildEmailHtml(submission, slug = "quote-autoresponse") {
 
   if (templateData.hero?.callout) {
     textSections.push(templateData.hero.callout);
+  }
+
+  if (submission?.portalCredentials?.email && submission?.portalCredentials?.temporaryPassword) {
+    textSections.push("Client Dashboard Login:");
+    textSections.push(`Login: ${submission.portalCredentials.loginUrl || "/client-login"}`);
+    textSections.push(`Email: ${submission.portalCredentials.email}`);
+    textSections.push(`Temporary Password: ${submission.portalCredentials.temporaryPassword}`);
   }
 
   if (templateData.hero?.heading || templateData.hero?.subheading) {

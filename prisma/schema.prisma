@@ -26,62 +26,135 @@ model AdminUser {
 }
 
 model ContactSubmission {
-  id                        Int      @id @default(autoincrement())
-  name                      String   @db.VarChar(255)
-  firstName                 String?  @db.VarChar(128)
-  lastName                  String?  @db.VarChar(128)
-  email                     String   @db.VarChar(255)
-  phone                     String?  @db.VarChar(50)
-  companyName               String?  @db.VarChar(255)
-  companyAddress            String?  @db.VarChar(255)
-  businessLocations         String?  @db.VarChar(128)
-  platform                  String?  @db.VarChar(128)
-  negativeReviewsNeedRemoving String? @db.VarChar(128)
-  budgetPerRemoval          String?  @db.VarChar(128)
-  source                    String?  @db.VarChar(64)
-  metadata                  Json?
-  createdAt                 DateTime @default(now())
+  id                          Int      @id @default(autoincrement())
+  name                        String   @db.VarChar(255)
+  firstName                   String?  @db.VarChar(128)
+  lastName                    String?  @db.VarChar(128)
+  email                       String   @db.VarChar(255)
+  phone                       String?  @db.VarChar(50)
+  companyName                 String?  @db.VarChar(255)
+  companyAddress              String?  @db.VarChar(255)
+  businessLocations           String?  @db.VarChar(128)
+  platform                    String?  @db.VarChar(128)
+  negativeReviewsNeedRemoving String?  @db.VarChar(128)
+  budgetPerRemoval            String?  @db.VarChar(128)
+  source                      String?  @db.VarChar(64)
+  metadata                    Json?
+  createdAt                   DateTime @default(now())
 
   @@map("contact_submissions")
 }
 
 // ── Checkout form submissions with Stripe status ────────────────────
 model CheckoutSubmission {
-  id                    Int      @id @default(autoincrement())
-  name                  String   @db.VarChar(255)
-  email                 String   @db.VarChar(255)
-  phone                 String?  @db.VarChar(50)
-  companyName           String?  @db.VarChar(255)
-  googleDataId          String?  @db.VarChar(255)
+  id                    Int       @id @default(autoincrement())
+  name                  String    @db.VarChar(255)
+  email                 String    @db.VarChar(255)
+  phone                 String?   @db.VarChar(50)
+  companyName           String?   @db.VarChar(255)
+  googleDataId          String?   @db.VarChar(255)
   reviewLinks           Json?
-  reason                String?  @db.Text
-  quantity              Int      @default(1)
-  amount                Int      @default(0) // cents
+  reason                String?   @db.Text
+  quantity              Int       @default(1)
+  amount                Int       @default(0) // cents
   // Credit repair intake (Step 1)
-  address               String?  @db.VarChar(500)
-  dob                   String?  @db.VarChar(20)        // YYYY-MM-DD
-  ssnLast4              String?  @db.VarChar(4)
-  ssnEncrypted          String?  @db.Text               // base64(KMS or AES-256-GCM ciphertext)
+  address               String?   @db.VarChar(500)
+  dob                   String?   @db.VarChar(20) // YYYY-MM-DD
+  ssnLast4              String?   @db.VarChar(4)
+  ssnEncrypted          String?   @db.Text // base64(KMS or AES-256-GCM ciphertext)
   // Document uploads (Step 2) — relative paths under private-uploads/
-  idDocPath             String?  @db.VarChar(500)
-  utilityDocPath        String?  @db.VarChar(500)
-  creditReportDocPath   String?  @db.VarChar(500)
+  idDocPath             String?   @db.VarChar(500)
+  utilityDocPath        String?   @db.VarChar(500)
+  creditReportDocPath   String?   @db.VarChar(500)
   // Auth-letter signature (Step 3)
-  signatureDataUrl      String?  @db.LongText           // image/png data URL
+  signatureDataUrl      String?   @db.LongText // image/png data URL
   signedAt              DateTime?
-  authLetterSnapshot    String?  @db.Text               // rendered auth letter text at sign time
+  authLetterSnapshot    String?   @db.Text // rendered auth letter text at sign time
   // Stripe + status
-  stripeSessionId       String?  @db.VarChar(255)
-  stripePaymentIntentId String?  @db.VarChar(255)
-  stripeCustomerId      String?  @db.VarChar(255)
-  stripeSetupIntentId   String?  @db.VarChar(255)
-  stripePaymentMethodId String?  @db.VarChar(255)
+  stripeSessionId       String?   @db.VarChar(255)
+  stripePaymentIntentId String?   @db.VarChar(255)
+  stripeCustomerId      String?   @db.VarChar(255)
+  stripeSetupIntentId   String?   @db.VarChar(255)
+  stripePaymentMethodId String?   @db.VarChar(255)
   crmLeadId             Int?
-  paymentStatus         String   @default("pending") @db.VarChar(32) // pending | card_saved | charged | canceled | failed
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  paymentStatus         String    @default("pending") @db.VarChar(32) // pending | card_saved | charged | canceled | failed
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  clientDashboardAccount ClientDashboardAccount?
 
   @@map("checkout_submissions")
+}
+
+model ClientDashboardAccount {
+  id                   Int                @id @default(autoincrement())
+  checkoutSubmissionId Int                @unique
+  checkoutSubmission   CheckoutSubmission @relation(fields: [checkoutSubmissionId], references: [id], onDelete: Cascade)
+  email                String             @db.VarChar(255)
+  passwordHash         String             @db.VarChar(255)
+  status               String             @default("active") @db.VarChar(32)
+  lastLoginAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  bureauReports ClientBureauReport[]
+  documents     ClientDashboardDocument[]
+  updates       ClientDashboardUpdate[]
+
+  @@index([email])
+  @@map("client_dashboard_accounts")
+}
+
+model ClientBureauReport {
+  id               Int                    @id @default(autoincrement())
+  accountId        Int
+  account          ClientDashboardAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  bureau           String                 @db.VarChar(32)
+  score            Int                    @default(0)
+  scoreDate        DateTime?
+  negativeItems    Int                    @default(0)
+  disputes         Int                    @default(0)
+  deletions        Int                    @default(0)
+  positivesNote    String?                @db.Text
+  reportDocPath    String?                @db.VarChar(500)
+  reportUploadedAt DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@unique([accountId, bureau])
+  @@map("client_bureau_reports")
+}
+
+model ClientDashboardDocument {
+  id           Int                    @id @default(autoincrement())
+  accountId    Int
+  account      ClientDashboardAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type         String                 @db.VarChar(64)
+  label        String                 @db.VarChar(128)
+  token        String                 @db.VarChar(500)
+  originalName String?                @db.VarChar(255)
+  mimeType     String?                @db.VarChar(100)
+  size         Int?
+  uploadedBy   String                 @default("client") @db.VarChar(32)
+  createdAt    DateTime               @default(now())
+
+  @@index([accountId, type])
+  @@map("client_dashboard_documents")
+}
+
+model ClientDashboardUpdate {
+  id        Int                    @id @default(autoincrement())
+  accountId Int
+  account   ClientDashboardAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  title     String                 @db.VarChar(160)
+  body      String                 @db.Text
+  createdBy String                 @default("Zack") @db.VarChar(128)
+  disputes  Int?
+  deletions Int?
+  createdAt DateTime               @default(now())
+
+  @@index([accountId, createdAt])
+  @@map("client_dashboard_updates")
 }
 
 // ── Email templates (quote-autoresponse, checkout-success) ──────────
@@ -91,7 +164,7 @@ model EmailTemplate {
   name        String   @db.VarChar(128)
   subject     String   @db.VarChar(500)
   previewText String?  @db.VarChar(500)
-  content     Json     // full template data (same structure as template-data.json)
+  content     Json // full template data (same structure as template-data.json)
   enabled     Boolean  @default(true)
   updatedAt   DateTime @updatedAt
 
@@ -112,8 +185,8 @@ model Setting {
 // ── CMS page content (per page + section) ───────────────────────────
 model PageContent {
   id        Int      @id @default(autoincrement())
-  page      String   @db.VarChar(64)  // homepage | checkout
-  section   String   @db.VarChar(64)  // hero | features | faq | ...
+  page      String   @db.VarChar(64) // homepage | checkout
+  section   String   @db.VarChar(64) // hero | features | faq | ...
   content   Json
   updatedAt DateTime @updatedAt
 
