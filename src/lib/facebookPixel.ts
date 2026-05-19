@@ -29,4 +29,3 @@ export function trackFacebookLead() {
 export function trackFacebookPurchase(params?: Record<string, unknown>) {
   return trackFacebookEvent("Purchase", params);
 }
-
