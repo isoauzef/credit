@@ -162,6 +162,7 @@ function normalizeAccountStatusText(value) {
   return String(value || "")
     .toLowerCase()
     .replace(/open\s*[\/\\]?\s*closed/g, "open closed")
+    .replace(/openyclosed/g, "open closed")
     .replace(/openv(?:c|l|i)?osed/g, "open closed")
     .replace(/openclosed/g, "open closed")
     .replace(/ciosed/g, "closed")
@@ -182,7 +183,11 @@ function parseAccountStatus(text) {
     /\bclosed accounts\b/.test(normalized) ||
     /\bpayment\s+(?:history|istry|story|itary)\s+closed\b/.test(normalized)
   ) return "closed";
-  if (/\bopen closed open\b/.test(normalized) || /\bopen accounts\b/.test(normalized)) return "open";
+  if (
+    /\bopen closed open\b/.test(normalized) ||
+    /\bopen accounts\b/.test(normalized) ||
+    /\bstatus\s+open(?:never|\s+never)?\b/.test(normalized)
+  ) return "open";
   return null;
 }
 
