@@ -126,6 +126,9 @@ function ClientDashboardAdminPanel({
   onSaveReport,
   onAddUpdate,
   onViewDocument,
+  intakeDocuments,
+  signature,
+  onViewSignature,
 }: {
   submissionId: number;
   state?: ClientDashboardAdminResponse;
@@ -136,6 +139,9 @@ function ClientDashboardAdminPanel({
   onSaveReport: (id: number, bureau: string, form: HTMLFormElement) => void;
   onAddUpdate: (id: number, form: HTMLFormElement) => void;
   onViewDocument: (token: string) => void;
+  intakeDocuments: Array<{ key: string; label: string; token: string; icon: "image" | "file" }>;
+  signature?: { signatureDataUrl: string | null; signedAt: string | null; authLetterSnapshot: string | null };
+  onViewSignature: (signatureDataUrl?: string | null) => void;
 }) {
   if (loading && !state) {
     return (
@@ -166,6 +172,8 @@ function ClientDashboardAdminPanel({
   }
 
   const dashboard = state.dashboard;
+  const hasSignature = Boolean(signature?.signatureDataUrl);
+  const uploadedDocumentCount = intakeDocuments.length + dashboard.documents.extra.length + (hasSignature ? 1 : 0);
 
   return (
     <div className="space-y-5 rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-4">
@@ -215,12 +223,28 @@ function ClientDashboardAdminPanel({
       <div className="rounded-md border border-slate-800 bg-slate-900/70 p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h5 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Uploaded Documents</h5>
-          <span className="text-xs text-slate-500">{dashboard.documents.extra.length} files</span>
+          <span className="text-xs text-slate-500">{uploadedDocumentCount} files</span>
         </div>
-        {dashboard.documents.extra.length === 0 ? (
+        {uploadedDocumentCount === 0 ? (
           <p className="text-sm text-slate-500">No client dashboard uploads yet.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {intakeDocuments.map((doc) => (
+              <button
+                key={doc.key}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onViewDocument(doc.token); }}
+                className="min-w-0 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-left hover:border-cyan-500/60"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-100">
+                  {doc.icon === "image" ? <ImageIcon size={14} className="shrink-0 text-cyan-300" /> : <FileText size={14} className="shrink-0 text-cyan-300" />}
+                  <span className="truncate">{doc.label}</span>
+                </span>
+                <span className="mt-1 block truncate text-xs text-slate-500">
+                  Checkout intake
+                </span>
+              </button>
+            ))}
             {dashboard.documents.extra.map((doc) => (
               <button
                 key={doc.id}
@@ -237,6 +261,21 @@ function ClientDashboardAdminPanel({
                 </span>
               </button>
             ))}
+            {hasSignature && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onViewSignature(signature?.signatureDataUrl); }}
+                className="min-w-0 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-left hover:border-cyan-500/60"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-100">
+                  <FileText size={14} className="shrink-0 text-cyan-300" />
+                  <span className="truncate">Signature</span>
+                </span>
+                <span className="mt-1 block truncate text-xs text-slate-500">
+                  {signature?.signedAt ? formatDate(signature.signedAt) : "Signed authorization"}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -620,6 +659,31 @@ export default function CheckoutSubmissions() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
+  const viewSignature = (signatureDataUrl?: string | null) => {
+    if (!signatureDataUrl) {
+      toast.error("Signature is not available.");
+      return;
+    }
+
+    const safeDataUrl = signatureDataUrl.replace(/"/g, "&quot;");
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <title>Signature</title>
+          <style>
+            body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0f172a; }
+            img { max-width: min(900px, 92vw); max-height: 82vh; background: #fff; border-radius: 8px; padding: 16px; }
+          </style>
+        </head>
+        <body><img src="${safeDataUrl}" alt="Signature" /></body>
+      </html>
+    `;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this checkout submission?")) return;
     await mutate("DELETE", undefined, `/${id}`);
@@ -825,7 +889,7 @@ export default function CheckoutSubmissions() {
                           </div>
 
                           {/* Credit Repair PII section */}
-                          {(s.address || s.dob || s.ssnLast4 || s.idDocPath || s.utilityDocPath || s.creditReportDocPath || s.signedAt) && (
+                          {(s.address || s.dob || s.ssnLast4) && (
                             <div>
                               <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
                                 Credit Repair Intake
@@ -863,51 +927,6 @@ export default function CheckoutSubmissions() {
                                     </div>
                                   </div>
                                 )}
-                                {(s.idDocPath || s.utilityDocPath || s.creditReportDocPath) && (
-                                  <div className="sm:col-span-2 flex flex-wrap gap-2">
-                                    {s.idDocPath && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.idDocPath!); }}
-                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
-                                      >
-                                        <ImageIcon size={14} /> View Photo ID
-                                      </button>
-                                    )}
-                                    {s.utilityDocPath && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.utilityDocPath!); }}
-                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
-                                      >
-                                        <FileText size={14} /> View Utility Bill
-                                      </button>
-                                    )}
-                                    {s.creditReportDocPath && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); downloadSecureFile(s.creditReportDocPath!); }}
-                                        className="inline-flex items-center gap-2 rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700"
-                                      >
-                                        <FileText size={14} /> View Credit Report
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                                {signatures[s.id]?.signatureDataUrl && (
-                                  <div className="sm:col-span-2">
-                                    <p className="text-slate-500 text-xs mb-1">
-                                      Signature {signatures[s.id]?.signedAt && (
-                                        <span className="ml-1 text-slate-600">({formatDate(signatures[s.id]!.signedAt!)})</span>
-                                      )}
-                                    </p>
-                                    <img
-                                      src={signatures[s.id]!.signatureDataUrl!}
-                                      alt="Signature"
-                                      className="bg-white rounded-md p-2 border border-slate-700 max-h-32"
-                                    />
-                                  </div>
-                                )}
                               </div>
                             </div>
                           )}
@@ -922,6 +941,13 @@ export default function CheckoutSubmissions() {
                             onSaveReport={saveBureauReport}
                             onAddUpdate={addClientUpdate}
                             onViewDocument={downloadSecureFile}
+                            intakeDocuments={[
+                              ...(s.idDocPath ? [{ key: "photo_id", label: "View Photo ID", token: s.idDocPath, icon: "image" as const }] : []),
+                              ...(s.utilityDocPath ? [{ key: "utility_bill", label: "View Utility Bill", token: s.utilityDocPath, icon: "file" as const }] : []),
+                              ...(s.creditReportDocPath ? [{ key: "credit_report", label: "View Credit Report", token: s.creditReportDocPath, icon: "file" as const }] : []),
+                            ]}
+                            signature={signatures[s.id]}
+                            onViewSignature={viewSignature}
                           />
                         </div>
                       </td>
