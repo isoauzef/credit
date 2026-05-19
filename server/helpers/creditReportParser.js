@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs/promises");
 const { createCanvas, DOMMatrix, Path2D } = require("@napi-rs/canvas");
 
 if (!globalThis.DOMMatrix) globalThis.DOMMatrix = DOMMatrix;
@@ -7,6 +8,7 @@ if (!globalThis.Path2D) globalThis.Path2D = Path2D;
 const pdfjs = require("pdfjs-dist/legacy/build/pdf.js");
 const { createWorker } = require("tesseract.js");
 const englishData = require("@tesseract.js-data/eng");
+const TESSERACT_CACHE_DIR = path.join(__dirname, "..", "..", "private-uploads", ".tesseract-cache");
 
 class CanvasFactory {
   create(width, height) {
@@ -130,7 +132,7 @@ function cropScore(rendered) {
 }
 
 async function renderFirstPage(pdfPath) {
-  const data = new Uint8Array(await require("fs/promises").readFile(pdfPath));
+  const data = new Uint8Array(await fs.readFile(pdfPath));
   const loadingTask = pdfjs.getDocument({
     data,
     disableWorker: true,
@@ -201,8 +203,10 @@ async function parseCreditReportPdf(pdfPath) {
   const rendered = await renderFirstPage(pdfPath);
   const pageBuffer = rendered.canvas.toBuffer("image/png");
   const scoreBuffer = cropScore(rendered);
+  await fs.mkdir(TESSERACT_CACHE_DIR, { recursive: true });
   const worker = await createWorker("eng", 1, {
     langPath: englishData.langPath,
+    cachePath: TESSERACT_CACHE_DIR,
     gzip: englishData.gzip,
   });
 
