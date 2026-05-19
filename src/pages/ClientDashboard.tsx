@@ -506,7 +506,7 @@ export default function ClientDashboard() {
 
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Worker Updates</h2>
+                <h2 className="text-lg font-semibold">Live Updates</h2>
                 <span className="text-sm text-slate-500">{dashboard.updates.length} updates</span>
               </div>
               {dashboard.updates.length === 0 ? (
@@ -534,7 +534,7 @@ export default function ClientDashboard() {
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold">Positive History</h2>
+              <h2 className="text-lg font-semibold">Positive Bill Payment History</h2>
               {positiveHistory.length === 0 ? (
                 <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
                   No positive history has been added yet.
@@ -613,8 +613,13 @@ export default function ClientDashboard() {
                   <p className="text-sm text-slate-500">{dashboard.agent.role}</p>
                 </div>
               </div>
-              <div className="mt-4 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                Referral: <span className="font-medium text-slate-900">{dashboard.agent.referral}</span>
+              <div className="mt-4 space-y-2 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                <p>
+                  Direct Line/Text: <a href="tel:18182007915" className="font-medium text-slate-900 hover:text-[#1e5a8a]">818-200-7915</a>
+                </p>
+                <p>
+                  Email: <a href="mailto:zack@creditremovers.com" className="font-medium text-slate-900 hover:text-[#1e5a8a]">zack@creditremovers.com</a>
+                </p>
               </div>
             </section>
 

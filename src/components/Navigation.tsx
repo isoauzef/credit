@@ -109,7 +109,7 @@ export function Navigation({
               <img
                 src={logoSrc}
                 alt="Credit Removers"
-                className="h-10 w-auto drop-shadow-sm"
+                className={clientLoginOnly ? "h-auto w-auto max-w-[min(58vw,220px)] object-contain drop-shadow-sm" : "h-10 w-auto drop-shadow-sm"}
                 decoding="async"
               />
             </a>
@@ -118,7 +118,7 @@ export function Navigation({
               <a
                 href="/client-login"
                 aria-label="Login to your client dashboard"
-                className={`inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-coral-500 to-orange-500 px-4 text-sm font-semibold text-white shadow-md transition-all hover:from-coral-600 hover:to-orange-600 sm:px-5 ${focusRing}`}
+                className={`inline-flex min-h-10 items-center gap-2 whitespace-nowrap rounded-full border border-white/20 bg-gradient-to-r from-coral-500 to-orange-500 px-[10px] py-[10px] text-[13px] font-semibold text-white shadow-md transition-all hover:from-coral-600 hover:to-orange-600 sm:px-5 sm:py-2.5 sm:text-sm ${focusRing}`}
               >
                 <User className="h-4 w-4" aria-hidden="true" />
                 <span>Client Login</span>

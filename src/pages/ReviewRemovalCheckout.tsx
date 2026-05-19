@@ -961,8 +961,6 @@ function SubmissionForm() {
       "  • Communicate with creditors, collection agencies, and other furnishers of information on my behalf,",
       "  • Receive and review correspondence regarding such disputes.",
       "",
-      "This authorization shall remain in effect until revoked in writing by me.",
-      "",
       "My identifying information:",
       `  Full Name:        ${name}`,
       `  Date of Birth:    ${dobDisplay}`,
@@ -1261,8 +1259,8 @@ function SubmissionForm() {
           {step === 2 && (
             <div className="space-y-6">
               <p className="text-sm text-gray-600">
-                Uploading these documents helps us verify your identity and start work faster. All three are optional
-                — if you don’t have one on hand, just skip it and we’ll request it later if needed.
+                Uploading these verifies your identity. While optional for sign-up, they are required to start your
+                case. Don't have them handy? Skip them now and upload them later in your client dashboard.
               </p>
 
               <FileDropzone
@@ -1560,6 +1558,7 @@ function CardForm({
           options={{
             layout: "tabs",
             paymentMethodOrder: ["card"],
+            business: { name: "CreditRemovers.com" },
           }}
           onReady={() => setCardReady(true)}
           onChange={(e) => setCardReady(e.complete)}
