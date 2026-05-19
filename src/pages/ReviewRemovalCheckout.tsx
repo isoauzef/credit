@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle2,
+  Copy,
   X,
   Edit3,
   Plus,
@@ -726,11 +727,13 @@ function SubmissionForm() {
   const [clientSecret, setClientSecret] = useState("");
   const [setupIntentId, setSetupIntentId] = useState("");
   const [portalCredentials, setPortalCredentials] = useState<PortalCredentials | null>(null);
+  const [copiedPortalField, setCopiedPortalField] = useState<"email" | "password" | null>(null);
   const [emailCheck, setEmailCheck] = useState<EmailAvailability>({ status: "idle" });
 
   // Scroll-to-top of the form card whenever step (or the card_step status) changes
   const formCardRef = useRef<HTMLDivElement | null>(null);
   const isFirstRender = useRef(true);
+  const copyFeedbackTimeout = useRef<number | null>(null);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -741,6 +744,38 @@ function SubmissionForm() {
     const top = el.getBoundingClientRect().top + window.scrollY - 80; // 80px breathing room above
     window.scrollTo({ top, behavior: "smooth" });
   }, [step, status]);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeout.current) window.clearTimeout(copyFeedbackTimeout.current);
+    };
+  }, []);
+
+  const copyPortalValue = useCallback(async (field: "email" | "password", value?: string | null) => {
+    if (!value) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+
+      setCopiedPortalField(field);
+      if (copyFeedbackTimeout.current) window.clearTimeout(copyFeedbackTimeout.current);
+      copyFeedbackTimeout.current = window.setTimeout(() => setCopiedPortalField(null), 1600);
+    } catch (_) {
+      setCopiedPortalField(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (status !== "card_step" || stripePromise) return;
@@ -1046,19 +1081,47 @@ function SubmissionForm() {
                 </div>
               </div>
               <div className="mt-4 grid gap-3 text-sm">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-gray-400">Email</p>
-                  <p className="font-medium text-gray-900 break-words">{portalCredentials.email}</p>
+                <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Email</p>
+                      <p className="font-medium text-gray-900 break-words">{portalCredentials.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => copyPortalValue("email", portalCredentials.email)}
+                      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-[#1e5a8a]/30 hover:text-[#1e5a8a] focus:outline-none focus:ring-2 focus:ring-[#1e5a8a]/30"
+                      aria-label="Copy client dashboard email"
+                      title={copiedPortalField === "email" ? "Copied" : "Copy email"}
+                    >
+                      {copiedPortalField === "email" ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 {portalCredentials.temporaryPassword && (
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-400">Temporary Password</p>
-                    <p className="font-mono font-semibold text-gray-900 break-all">{portalCredentials.temporaryPassword}</p>
+                  <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Temporary Password</p>
+                        <p className="font-mono font-semibold text-gray-900 break-all">{portalCredentials.temporaryPassword}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyPortalValue("password", portalCredentials.temporaryPassword)}
+                        className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-[#1e5a8a]/30 hover:text-[#1e5a8a] focus:outline-none focus:ring-2 focus:ring-[#1e5a8a]/30"
+                        aria-label="Copy client dashboard temporary password"
+                        title={copiedPortalField === "password" ? "Copied" : "Copy temporary password"}
+                      >
+                        {copiedPortalField === "password" ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
               <a
                 href={portalCredentials.loginUrl || "/client-login"}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e5a8a] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/10 hover:bg-[#17466d] transition"
               >
                 Open Client Dashboard <ArrowRight className="w-4 h-4" />

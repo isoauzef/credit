@@ -3,6 +3,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const prisma = require("../db");
+const { parseCreditReportPdf } = require("./creditReportParser");
 
 const BUREAUS = [
   { key: "equifax", name: "Equifax" },
@@ -124,8 +125,19 @@ function safeInt(value, fallback = 0) {
 
 function parseDate(value) {
   if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const humanDate = String(value).match(/^[A-Za-z]+\s+\d{1,2},\s*\d{4}$/);
+  if (humanDate) {
+    const parsed = new Date(`${String(value).replace(/,\s*/g, ", ")} UTC`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getPrivateUploadPath(token) {
+  const privateDir = path.join(__dirname, "..", "..", "private-uploads");
+  return path.join(privateDir, token);
 }
 
 function validateUploadToken(token) {
@@ -138,13 +150,85 @@ function validateUploadToken(token) {
   }
 
   const privateDir = path.join(__dirname, "..", "..", "private-uploads");
-  const full = path.join(privateDir, value);
+  const full = getPrivateUploadPath(value);
   if (!full.startsWith(privateDir + path.sep) || !fs.existsSync(full)) {
     const err = new Error("Uploaded document not found");
     err.statusCode = 400;
     throw err;
   }
   return value;
+}
+
+function nullableString(value) {
+  const text = String(value ?? "").trim();
+  return text ? text.slice(0, 128) : null;
+}
+
+function nullableInt(value) {
+  if (value === "" || value == null) return null;
+  return safeInt(value, 0);
+}
+
+function compactJson(value) {
+  const compacted = Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "")
+  );
+  return Object.keys(compacted).length ? compacted : null;
+}
+
+function jsonFromPayload(payload, key) {
+  if (!payload || typeof payload !== "object") return {};
+  const direct = payload[key];
+  return direct && typeof direct === "object" && !Array.isArray(direct) ? direct : {};
+}
+
+function buildAccountSummary(data = {}) {
+  const nested = jsonFromPayload(data, "accountSummary");
+  return compactJson({
+    openAccounts: nullableInt(nested.openAccounts ?? data.openAccounts),
+    selfReportedAccounts: nullableInt(nested.selfReportedAccounts ?? data.selfReportedAccounts),
+    accountsEverLate: nullableInt(nested.accountsEverLate ?? data.accountsEverLate),
+    closedAccounts: nullableInt(nested.closedAccounts ?? data.closedAccounts),
+    collections: nullableInt(nested.collections ?? data.collections),
+    averageAccountAge: nullableString(nested.averageAccountAge ?? data.averageAccountAge),
+    oldestAccount: nullableString(nested.oldestAccount ?? data.oldestAccount),
+  });
+}
+
+function buildCreditUsage(data = {}) {
+  const nested = jsonFromPayload(data, "creditUsage");
+  return compactJson({
+    usagePercent: nullableInt(nested.usagePercent ?? data.usagePercent),
+    creditUsed: nullableInt(nested.creditUsed ?? data.creditUsed),
+    creditLimit: nullableInt(nested.creditLimit ?? data.creditLimit),
+  });
+}
+
+function buildDebtSummary(data = {}) {
+  const nested = jsonFromPayload(data, "debtSummary");
+  return compactJson({
+    creditCardDebt: nullableInt(nested.creditCardDebt ?? data.creditCardDebt),
+    selfReportedBalance: nullableInt(nested.selfReportedBalance ?? data.selfReportedBalance),
+    loanDebt: nullableInt(nested.loanDebt ?? data.loanDebt),
+    collectionsDebt: nullableInt(nested.collectionsDebt ?? data.collectionsDebt),
+    totalDebt: nullableInt(nested.totalDebt ?? data.totalDebt),
+  });
+}
+
+function mergeParsedReport(update, parsed) {
+  if (!parsed) return update;
+  return {
+    ...update,
+    ...(parsed.score != null && { score: parsed.score }),
+    ...(parsed.scoreDate && { scoreDate: parseDate(parsed.scoreDate) }),
+    ...(parsed.dateGenerated && { dateGenerated: parseDate(parsed.dateGenerated) }),
+    ...(parsed.accountSummary && Object.keys(parsed.accountSummary).length && { accountSummary: parsed.accountSummary }),
+    ...(parsed.creditUsage && Object.keys(parsed.creditUsage).length && { creditUsage: parsed.creditUsage }),
+    ...(parsed.debtSummary && Object.keys(parsed.debtSummary).length && { debtSummary: parsed.debtSummary }),
+    reportParsedAt: new Date(),
+    reportParseStatus: "parsed",
+    reportParseError: null,
+  };
 }
 
 async function updateBureauReport(accountId, bureau, data = {}) {
@@ -157,18 +241,39 @@ async function updateBureauReport(accountId, bureau, data = {}) {
 
   const reportDocPath = data.reportDocToken ? validateUploadToken(data.reportDocToken) : undefined;
   const score = safeInt(data.score, 0);
-  const update = {
+  let update = {
     score: Math.min(score, 850),
     scoreDate: parseDate(data.scoreDate),
+    dateGenerated: parseDate(data.dateGenerated),
     negativeItems: safeInt(data.negativeItems, 0),
     disputes: safeInt(data.disputes, 0),
     deletions: safeInt(data.deletions, 0),
     positivesNote: data.positivesNote ? String(data.positivesNote).slice(0, 5000) : null,
+    accountSummary: buildAccountSummary(data),
+    creditUsage: buildCreditUsage(data),
+    debtSummary: buildDebtSummary(data),
   };
 
   if (reportDocPath) {
     update.reportDocPath = reportDocPath;
+    update.reportOriginalName = data.reportOriginalName ? String(data.reportOriginalName).slice(0, 255) : null;
     update.reportUploadedAt = new Date();
+    update.reportParsedAt = null;
+    update.reportParseStatus = "pending";
+    update.reportParseError = null;
+
+    if (reportDocPath.toLowerCase().endsWith(".pdf")) {
+      try {
+        const parsed = await parseCreditReportPdf(getPrivateUploadPath(reportDocPath), normalized);
+        update = mergeParsedReport(update, parsed);
+      } catch (err) {
+        update.reportParsedAt = new Date();
+        update.reportParseStatus = "failed";
+        update.reportParseError = err?.message ? String(err.message).slice(0, 2000) : "Could not parse PDF report";
+      }
+    } else {
+      update.reportParseStatus = "not_pdf";
+    }
   }
 
   return prisma.clientBureauReport.upsert({
@@ -227,6 +332,12 @@ function serializeDate(value) {
 }
 
 async function getClientDashboardSnapshot(accountId) {
+  const accountExists = await prisma.clientDashboardAccount.findUnique({
+    where: { id: Number(accountId) },
+    select: { id: true },
+  });
+  if (!accountExists) return null;
+
   await seedBureauReports(accountId);
   const account = await prisma.clientDashboardAccount.findUnique({
     where: { id: Number(accountId) },
@@ -285,12 +396,20 @@ async function getClientDashboardSnapshot(accountId) {
       name: bureau.name,
       score: report?.score || 0,
       scoreDate: serializeDate(report?.scoreDate),
+      dateGenerated: serializeDate(report?.dateGenerated),
       negativeItems: report?.negativeItems || 0,
       disputes: report?.disputes || 0,
       deletions: report?.deletions || 0,
       positivesNote: report?.positivesNote || "",
+      accountSummary: report?.accountSummary || null,
+      creditUsage: report?.creditUsage || null,
+      debtSummary: report?.debtSummary || null,
       reportDocPath: report?.reportDocPath || null,
+      reportOriginalName: report?.reportOriginalName || null,
       reportUploadedAt: serializeDate(report?.reportUploadedAt),
+      reportParsedAt: serializeDate(report?.reportParsedAt),
+      reportParseStatus: report?.reportParseStatus || null,
+      reportParseError: report?.reportParseError || null,
     };
   });
 

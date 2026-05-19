@@ -116,8 +116,16 @@ model ClientBureauReport {
   disputes         Int                    @default(0)
   deletions        Int                    @default(0)
   positivesNote    String?                @db.Text
+  dateGenerated    DateTime?
+  accountSummary   Json?
+  creditUsage      Json?
+  debtSummary      Json?
   reportDocPath    String?                @db.VarChar(500)
+  reportOriginalName String?              @db.VarChar(255)
   reportUploadedAt DateTime?
+  reportParsedAt   DateTime?
+  reportParseStatus String?               @db.VarChar(32)
+  reportParseError String?                @db.Text
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 

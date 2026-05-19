@@ -17,12 +17,38 @@ type AdminBureauReport = {
   name: string;
   score: number;
   scoreDate: string | null;
+  dateGenerated: string | null;
   negativeItems: number;
   disputes: number;
   deletions: number;
   positivesNote: string;
+  accountSummary: {
+    openAccounts?: number;
+    selfReportedAccounts?: number;
+    accountsEverLate?: number;
+    closedAccounts?: number;
+    collections?: number;
+    averageAccountAge?: string;
+    oldestAccount?: string;
+  } | null;
+  creditUsage: {
+    usagePercent?: number;
+    creditUsed?: number;
+    creditLimit?: number;
+  } | null;
+  debtSummary: {
+    creditCardDebt?: number;
+    selfReportedBalance?: number;
+    loanDebt?: number;
+    collectionsDebt?: number;
+    totalDebt?: number;
+  } | null;
   reportDocPath: string | null;
+  reportOriginalName: string | null;
   reportUploadedAt: string | null;
+  reportParsedAt: string | null;
+  reportParseStatus: string | null;
+  reportParseError: string | null;
 };
 
 type AdminDashboardSnapshot = {
@@ -64,6 +90,10 @@ function formatDate(iso: string) {
 function dateInputValue(value: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function fieldValue(value: unknown) {
+  return value == null ? "" : String(value);
 }
 
 async function uploadDashboardFile(file: File) {
@@ -174,7 +204,7 @@ function ClientDashboardAdminPanel({
         <div className="grid gap-3 xl:grid-cols-3">
           {dashboard.bureauReports.map((report) => (
             <form
-              key={`${report.bureau}-${report.score}-${report.scoreDate}-${report.reportDocPath || "none"}`}
+              key={`${report.bureau}-${report.score}-${report.scoreDate}-${report.dateGenerated}-${report.reportDocPath || "none"}-${JSON.stringify(report.accountSummary || {})}-${JSON.stringify(report.creditUsage || {})}-${JSON.stringify(report.debtSummary || {})}`}
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -188,6 +218,15 @@ function ClientDashboardAdminPanel({
                   {report.reportDocPath ? "Report uploaded" : "No report"}
                 </span>
               </div>
+              {report.reportParseStatus && (
+                <div className={`rounded px-2 py-1 text-xs ${report.reportParseStatus === "parsed" ? "bg-emerald-500/10 text-emerald-300" : report.reportParseStatus === "failed" ? "bg-red-500/10 text-red-300" : "bg-slate-800 text-slate-300"}`}>
+                  {report.reportParseStatus === "parsed"
+                    ? `Parsed ${report.reportParsedAt ? formatDate(report.reportParsedAt) : ""}`
+                    : report.reportParseStatus === "failed"
+                    ? `PDF parse failed${report.reportParseError ? `: ${report.reportParseError}` : ""}`
+                    : "PDF parser pending"}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs text-slate-400">
                   Score
@@ -196,6 +235,10 @@ function ClientDashboardAdminPanel({
                 <label className="text-xs text-slate-400">
                   Score Date
                   <input name="scoreDate" type="date" defaultValue={dateInputValue(report.scoreDate)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                </label>
+                <label className="text-xs text-slate-400">
+                  Date Generated
+                  <input name="dateGenerated" type="date" defaultValue={dateInputValue(report.dateGenerated)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
                 </label>
                 <label className="text-xs text-slate-400">
                   Negative
@@ -214,6 +257,88 @@ function ClientDashboardAdminPanel({
                   <input name="reportFile" type="file" accept="image/jpeg,image/png,application/pdf" className="mt-1 block w-full text-xs text-slate-300 file:mr-2 file:rounded file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:text-slate-100" />
                 </label>
               </div>
+              {report.reportOriginalName && (
+                <p className="text-xs text-slate-500">Current file: {report.reportOriginalName}</p>
+              )}
+
+              <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Account Summary</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-slate-400">
+                    Open accounts
+                    <input name="openAccounts" type="number" min="0" defaultValue={fieldValue(report.accountSummary?.openAccounts)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Self-reported
+                    <input name="selfReportedAccounts" type="number" min="0" defaultValue={fieldValue(report.accountSummary?.selfReportedAccounts)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Ever late
+                    <input name="accountsEverLate" type="number" min="0" defaultValue={fieldValue(report.accountSummary?.accountsEverLate)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Closed
+                    <input name="closedAccounts" type="number" min="0" defaultValue={fieldValue(report.accountSummary?.closedAccounts)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Collections
+                    <input name="collections" type="number" min="0" defaultValue={fieldValue(report.accountSummary?.collections)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Average age
+                    <input name="averageAccountAge" defaultValue={fieldValue(report.accountSummary?.averageAccountAge)} placeholder="10 yrs 3 mos" className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400 sm:col-span-2">
+                    Oldest account
+                    <input name="oldestAccount" defaultValue={fieldValue(report.accountSummary?.oldestAccount)} placeholder="19 yrs 6 mos" className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Overall Credit Usage</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="text-xs text-slate-400">
+                    Usage %
+                    <input name="usagePercent" type="number" min="0" max="100" defaultValue={fieldValue(report.creditUsage?.usagePercent)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Used
+                    <input name="creditUsed" type="number" min="0" defaultValue={fieldValue(report.creditUsage?.creditUsed)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Limit
+                    <input name="creditLimit" type="number" min="0" defaultValue={fieldValue(report.creditUsage?.creditLimit)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-slate-500">Debt Summary</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-slate-400">
+                    Credit card debt
+                    <input name="creditCardDebt" type="number" min="0" defaultValue={fieldValue(report.debtSummary?.creditCardDebt)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Self-reported balance
+                    <input name="selfReportedBalance" type="number" min="0" defaultValue={fieldValue(report.debtSummary?.selfReportedBalance)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Loan debt
+                    <input name="loanDebt" type="number" min="0" defaultValue={fieldValue(report.debtSummary?.loanDebt)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400">
+                    Collections debt
+                    <input name="collectionsDebt" type="number" min="0" defaultValue={fieldValue(report.debtSummary?.collectionsDebt)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                  <label className="text-xs text-slate-400 sm:col-span-2">
+                    Total debt
+                    <input name="totalDebt" type="number" min="0" defaultValue={fieldValue(report.debtSummary?.totalDebt)} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
+                  </label>
+                </div>
+              </div>
+
               <label className="block text-xs text-slate-400">
                 Positive History
                 <textarea name="positivesNote" defaultValue={report.positivesNote} rows={2} className="mt-1 w-full rounded bg-slate-950 px-2 py-2 text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-cyan-400" />
@@ -352,10 +477,32 @@ export default function CheckoutSubmissions() {
     const payload: Record<string, unknown> = {
       score: formData.get("score"),
       scoreDate: formData.get("scoreDate"),
+      dateGenerated: formData.get("dateGenerated"),
       negativeItems: formData.get("negativeItems"),
       disputes: formData.get("disputes"),
       deletions: formData.get("deletions"),
       positivesNote: formData.get("positivesNote"),
+      accountSummary: {
+        openAccounts: formData.get("openAccounts"),
+        selfReportedAccounts: formData.get("selfReportedAccounts"),
+        accountsEverLate: formData.get("accountsEverLate"),
+        closedAccounts: formData.get("closedAccounts"),
+        collections: formData.get("collections"),
+        averageAccountAge: formData.get("averageAccountAge"),
+        oldestAccount: formData.get("oldestAccount"),
+      },
+      creditUsage: {
+        usagePercent: formData.get("usagePercent"),
+        creditUsed: formData.get("creditUsed"),
+        creditLimit: formData.get("creditLimit"),
+      },
+      debtSummary: {
+        creditCardDebt: formData.get("creditCardDebt"),
+        selfReportedBalance: formData.get("selfReportedBalance"),
+        loanDebt: formData.get("loanDebt"),
+        collectionsDebt: formData.get("collectionsDebt"),
+        totalDebt: formData.get("totalDebt"),
+      },
     };
 
     setDashboardLoading((p) => ({ ...p, [id]: true }));
@@ -363,6 +510,7 @@ export default function CheckoutSubmissions() {
       if (file instanceof File && file.size > 0) {
         const uploaded = await uploadDashboardFile(file);
         payload.reportDocToken = uploaded.token;
+        payload.reportOriginalName = uploaded.originalName;
       }
       const resp = await fetch(`/api/admin/checkout-submissions/${id}/client-dashboard/reports/${bureau}`, {
         method: "PUT",

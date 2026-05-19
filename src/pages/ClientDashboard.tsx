@@ -1,4 +1,5 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -35,10 +36,32 @@ type BureauReport = {
   name: string;
   score: number;
   scoreDate: string | null;
+  dateGenerated: string | null;
   negativeItems: number;
   disputes: number;
   deletions: number;
   positivesNote: string;
+  accountSummary: {
+    openAccounts?: number;
+    selfReportedAccounts?: number;
+    accountsEverLate?: number;
+    closedAccounts?: number;
+    collections?: number;
+    averageAccountAge?: string;
+    oldestAccount?: string;
+  } | null;
+  creditUsage: {
+    usagePercent?: number;
+    creditUsed?: number;
+    creditLimit?: number;
+  } | null;
+  debtSummary: {
+    creditCardDebt?: number;
+    selfReportedBalance?: number;
+    loanDebt?: number;
+    collectionsDebt?: number;
+    totalDebt?: number;
+  } | null;
   reportDocPath: string | null;
   reportUploadedAt: string | null;
 };
@@ -93,6 +116,48 @@ function formatDate(value?: string | null) {
   } catch {
     return value;
   }
+}
+
+function formatCurrency(value?: number | null) {
+  if (value == null || Number.isNaN(Number(value))) return "$0";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+}
+
+function SummaryRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-sm">
+      <dt className="min-w-0 text-slate-600">{label}</dt>
+      <dd className="shrink-0 text-right font-semibold text-slate-900">{value ?? "0"}</dd>
+    </div>
+  );
+}
+
+function MiniSummaryCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-3">
+      <h3 className="mb-3 text-base font-bold text-slate-800">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function CreditUsageDonut({ percent = 0 }: { percent?: number }) {
+  const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <div
+      className="mx-auto grid h-24 w-24 place-items-center rounded-full"
+      style={{ background: `conic-gradient(#fb7c1d ${safePercent * 3.6}deg, #e5e7eb 0deg)` }}
+      aria-label={`Credit usage ${safePercent}%`}
+    >
+      <div className="grid h-[72px] w-[72px] place-items-center rounded-full bg-white">
+        <span className="text-lg font-bold text-slate-950">{safePercent}%</span>
+      </div>
+    </div>
+  );
 }
 
 function UploadButton({
@@ -164,51 +229,97 @@ function BureauCard({ report }: { report: BureauReport }) {
   const logoSrc = bureauLogoPaths[report.bureau];
   const score = Math.max(0, Math.min(report.score || 0, 850));
   const percent = score > 0 ? Math.max(0.05, Math.min(1, (score - 300) / 550)) : 0;
+  const accountSummary = report.accountSummary || {};
+  const creditUsage = report.creditUsage || {};
+  const debtSummary = report.debtSummary || {};
 
   return (
-    <article className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex h-9 max-w-[160px] items-center">
-            {logoSrc ? (
-              <img src={logoSrc} alt={report.name} className="max-h-8 max-w-full object-contain" />
-            ) : (
-              <p className={`truncate text-lg font-extrabold tracking-wide ${style.text}`}>{report.name}</p>
-            )}
+    <article className="min-w-0 space-y-3">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex h-9 max-w-[160px] items-center">
+              {logoSrc ? (
+                <img src={logoSrc} alt={report.name} className="max-h-8 max-w-full object-contain" />
+              ) : (
+                <p className={`truncate text-lg font-extrabold tracking-wide ${style.text}`}>{report.name}</p>
+              )}
+            </div>
+            <div className="mt-1 space-y-0.5 text-xs text-slate-400">
+              <p className="truncate">Score date: {formatDate(report.scoreDate)}</p>
+              <p className="truncate">Date generated: {formatDate(report.dateGenerated)}</p>
+            </div>
           </div>
-          <p className="mt-1 truncate text-xs text-slate-400">Score date: {formatDate(report.scoreDate)}</p>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${report.reportDocPath ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+            {report.reportDocPath ? "Uploaded" : "No report"}
+          </span>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${report.reportDocPath ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-          {report.reportDocPath ? "Uploaded" : "No report"}
-        </span>
-      </div>
 
-      <div className="mt-5 grid gap-4">
-        <div
-          className="mx-auto grid h-28 w-28 shrink-0 place-items-center rounded-full"
-          style={{
-            background: `conic-gradient(${style.ring} ${percent * 360}deg, #e2e8f0 0deg)`,
-          }}
-        >
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-white">
-            <span className="text-3xl font-bold text-slate-950">{score}</span>
+        <div className="mt-5 grid gap-4">
+          <div
+            className="mx-auto grid h-28 w-28 shrink-0 place-items-center rounded-full"
+            style={{
+              background: `conic-gradient(${style.ring} ${percent * 360}deg, #e2e8f0 0deg)`,
+            }}
+          >
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-white">
+              <span className="text-3xl font-bold text-slate-950">{score}</span>
+            </div>
           </div>
+          <dl className="grid min-w-0 grid-cols-3 gap-2 text-center">
+            <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
+              <dt className="truncate text-[11px] font-medium text-slate-500">Negative</dt>
+              <dd className="mt-1 text-lg font-bold text-slate-950">{report.negativeItems}</dd>
+            </div>
+            <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
+              <dt className="truncate text-[11px] font-medium text-slate-500">Disputes</dt>
+              <dd className="mt-1 text-lg font-bold text-slate-950">{report.disputes}</dd>
+            </div>
+            <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
+              <dt className="truncate text-[11px] font-medium text-slate-500">Deleted</dt>
+              <dd className="mt-1 text-lg font-bold text-slate-950">{report.deletions}</dd>
+            </div>
+          </dl>
         </div>
-        <dl className="grid min-w-0 grid-cols-3 gap-2 text-center">
-          <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
-            <dt className="truncate text-[11px] font-medium text-slate-500">Negative</dt>
-            <dd className="mt-1 text-lg font-bold text-slate-950">{report.negativeItems}</dd>
+      </section>
+
+      <MiniSummaryCard title="Account Summary">
+        <dl className="space-y-2">
+          <SummaryRow label="Open accounts" value={accountSummary.openAccounts} />
+          {accountSummary.selfReportedAccounts != null && (
+            <SummaryRow label="Self-reported accounts" value={accountSummary.selfReportedAccounts} />
+          )}
+          <SummaryRow label="Accounts ever late" value={accountSummary.accountsEverLate} />
+          <SummaryRow label="Closed accounts" value={accountSummary.closedAccounts} />
+          <SummaryRow label="Collections" value={accountSummary.collections} />
+          <SummaryRow label="Average account age" value={accountSummary.averageAccountAge || "Not added"} />
+          <SummaryRow label="Oldest account" value={accountSummary.oldestAccount || "Not added"} />
+        </dl>
+      </MiniSummaryCard>
+
+      <MiniSummaryCard title="Overall Credit Usage">
+        <CreditUsageDonut percent={creditUsage.usagePercent} />
+        <dl className="mt-3 space-y-2 text-center">
+          <div className="text-sm text-slate-600">
+            Credit used: <span className="font-semibold text-slate-900">{formatCurrency(creditUsage.creditUsed)}</span>
           </div>
-          <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
-            <dt className="truncate text-[11px] font-medium text-slate-500">Disputes</dt>
-            <dd className="mt-1 text-lg font-bold text-slate-950">{report.disputes}</dd>
-          </div>
-          <div className="min-w-0 rounded-lg bg-slate-50 px-2 py-3">
-            <dt className="truncate text-[11px] font-medium text-slate-500">Deleted</dt>
-            <dd className="mt-1 text-lg font-bold text-slate-950">{report.deletions}</dd>
+          <div className="text-sm text-slate-600">
+            Credit limit: <span className="font-semibold text-slate-900">{formatCurrency(creditUsage.creditLimit)}</span>
           </div>
         </dl>
-      </div>
+      </MiniSummaryCard>
+
+      <MiniSummaryCard title="Debt Summary">
+        <dl className="space-y-2">
+          <SummaryRow label="Credit card and credit line debt" value={formatCurrency(debtSummary.creditCardDebt)} />
+          {debtSummary.selfReportedBalance != null && (
+            <SummaryRow label="Self-reported account balance" value={formatCurrency(debtSummary.selfReportedBalance)} />
+          )}
+          <SummaryRow label="Loan debt" value={formatCurrency(debtSummary.loanDebt)} />
+          <SummaryRow label="Collections debt" value={formatCurrency(debtSummary.collectionsDebt)} />
+          <SummaryRow label="Total debt" value={formatCurrency(debtSummary.totalDebt)} />
+        </dl>
+      </MiniSummaryCard>
     </article>
   );
 }
