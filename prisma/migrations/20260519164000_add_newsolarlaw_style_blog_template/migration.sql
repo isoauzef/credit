@@ -1,4 +1,4 @@
-﻿INSERT INTO `blog_posts` (
+INSERT INTO `blog_posts` (
   `title`,
   `slug`,
   `excerpt`,
