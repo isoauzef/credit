@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Toaster } from "sonner";
 import App from "./App";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
@@ -85,4 +86,9 @@ const router = createBrowserRouter([
   },
 ]);
 
-createRoot(document.getElementById("root")!).render(<RouterProvider router={router} />);
+createRoot(document.getElementById("root")!).render(
+  <>
+    <RouterProvider router={router} />
+    <Toaster richColors position="top-right" />
+  </>
+);

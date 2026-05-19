@@ -140,8 +140,12 @@ async function renderFirstPage(pdfPath) {
     useSystemFonts: true,
   });
   const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1.8 });
+  return { pdf, rendered: await renderPage(pdf, 1, 1.8) };
+}
+
+async function renderPage(pdf, pageNumber, scale) {
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale });
   const canvasFactory = new CanvasFactory();
   const rendered = canvasFactory.create(viewport.width, viewport.height);
 
@@ -152,6 +156,70 @@ async function renderFirstPage(pdfPath) {
   }).promise;
 
   return rendered;
+}
+
+function normalizeAccountStatusText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/open\s*[\/\\]?\s*closed/g, "open closed")
+    .replace(/openv(?:c|l|i)?osed/g, "open closed")
+    .replace(/openclosed/g, "open closed")
+    .replace(/ciosed/g, "closed")
+    .replace(/[^a-z]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pageHasAccountDetails(text) {
+  return /\b(?:account|aceount)\s*(?:name|into|info)\b/.test(text);
+}
+
+function parseAccountStatus(text) {
+  const normalized = normalizeAccountStatusText(text);
+  if (!pageHasAccountDetails(normalized)) return null;
+  if (
+    /\bopen closed closed\b/.test(normalized) ||
+    /\bclosed accounts\b/.test(normalized) ||
+    /\bpayment\s+(?:history|istry|story|itary)\s+closed\b/.test(normalized)
+  ) return "closed";
+  if (/\bopen closed open\b/.test(normalized) || /\bopen accounts\b/.test(normalized)) return "open";
+  return null;
+}
+
+async function parseAccountStatusCounts(pdf, worker) {
+  const counts = { openAccounts: 0, closedAccounts: 0 };
+  let accountPagesSeen = 0;
+  let consecutiveNonAccountPages = 0;
+  const maxPages = Math.min(pdf.numPages || 1, 30);
+
+  for (let pageNumber = 2; pageNumber <= maxPages; pageNumber += 1) {
+    let rendered;
+    try {
+      rendered = await renderPage(pdf, pageNumber, 1.2);
+      const result = await worker.recognize(rendered.canvas.toBuffer("image/png"));
+      const status = parseAccountStatus(result.data.text);
+      if (status === "closed") counts.closedAccounts += 1;
+      if (status === "open") counts.openAccounts += 1;
+
+      if (status) {
+        accountPagesSeen += 1;
+        consecutiveNonAccountPages = 0;
+      } else if (accountPagesSeen > 0) {
+        consecutiveNonAccountPages += 1;
+        if (consecutiveNonAccountPages >= 2) break;
+      }
+    } catch (_) {
+      if (accountPagesSeen > 0) {
+        consecutiveNonAccountPages += 1;
+        if (consecutiveNonAccountPages >= 2) break;
+      }
+    }
+  }
+
+  return compactObject({
+    openAccounts: counts.openAccounts || null,
+    closedAccounts: counts.closedAccounts || null,
+  });
 }
 
 function parseCreditReportText(fullText, scoreText) {
@@ -200,7 +268,7 @@ function parseCreditReportText(fullText, scoreText) {
 }
 
 async function parseCreditReportPdf(pdfPath) {
-  const rendered = await renderFirstPage(pdfPath);
+  const { pdf, rendered } = await renderFirstPage(pdfPath);
   const pageBuffer = rendered.canvas.toBuffer("image/png");
   const scoreBuffer = cropScore(rendered);
   await fs.mkdir(TESSERACT_CACHE_DIR, { recursive: true });
@@ -213,8 +281,19 @@ async function parseCreditReportPdf(pdfPath) {
   try {
     const fullResult = await worker.recognize(pageBuffer);
     const scoreResult = await worker.recognize(scoreBuffer);
+    const parsed = parseCreditReportText(fullResult.data.text, scoreResult.data.text);
+    const accountStatusCounts = await parseAccountStatusCounts(pdf, worker);
     return {
-      ...parseCreditReportText(fullResult.data.text, scoreResult.data.text),
+      ...parsed,
+      accountSummary: {
+        ...parsed.accountSummary,
+        ...(parsed.accountSummary.openAccounts == null && accountStatusCounts.openAccounts != null && {
+          openAccounts: accountStatusCounts.openAccounts,
+        }),
+        ...(accountStatusCounts.closedAccounts != null && {
+          closedAccounts: accountStatusCounts.closedAccounts,
+        }),
+      },
       rawTextLength: fullResult.data.text.length,
     };
   } finally {

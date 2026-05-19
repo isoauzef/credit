@@ -127,6 +127,14 @@ function formatCurrency(value?: number | null) {
   }).format(Number(value));
 }
 
+function formatClientName(value?: string | null) {
+  const parts = String(value || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || "";
+  const firstName = parts[0];
+  const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+  return `${firstName} ${lastInitial}.`;
+}
+
 function SummaryRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="flex items-start justify-between gap-3 text-sm">
@@ -374,6 +382,11 @@ export default function ClientDashboard() {
     () => dashboard?.documents.required.filter((item) => !item.uploaded) || [],
     [dashboard]
   );
+  const positiveHistory = useMemo(
+    () => dashboard?.bureauReports.filter((report) => report.positivesNote.trim()) || [],
+    [dashboard]
+  );
+  const hasUploadedBureauReports = Boolean(dashboard?.bureauReports.some((report) => report.reportDocPath));
 
   if (loading) {
     return (
@@ -412,8 +425,7 @@ export default function ClientDashboard() {
           </a>
           <div className="ml-auto flex min-w-0 items-center justify-end gap-3 text-right">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">Logged in user</p>
-              <h1 className="truncate text-base font-semibold text-white sm:text-xl">{dashboard.client.name}</h1>
+              <p className="truncate text-[14px] font-semibold text-white">{formatClientName(dashboard.client.name)}</p>
             </div>
           <button
             onClick={logout}
@@ -481,7 +493,9 @@ export default function ClientDashboard() {
             <section>
               <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-semibold">Credit Bureau Scores</h2>
-                <span className="text-sm text-slate-500">Scores show 0 until reports are uploaded.</span>
+                {!hasUploadedBureauReports && (
+                  <span className="text-sm text-slate-500">Scores show 0 until reports are uploaded.</span>
+                )}
               </div>
               <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {dashboard.bureauReports.map((report) => (
@@ -521,7 +535,23 @@ export default function ClientDashboard() {
 
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-lg font-semibold">Positive History</h2>
-              <div className="mt-4 min-h-24 rounded-lg border border-dashed border-slate-200 bg-slate-50" />
+              {positiveHistory.length === 0 ? (
+                <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                  No positive history has been added yet.
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-3">
+                  {positiveHistory.map((report) => (
+                    <article key={report.bureau} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-semibold text-slate-900">{report.name}</h3>
+                        <span className="shrink-0 text-xs text-slate-400">{formatDate(report.dateGenerated || report.scoreDate)}</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{report.positivesNote}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
 

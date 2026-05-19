@@ -1,4 +1,5 @@
 import { FormEvent, Fragment, useState } from "react";
+import { toast } from "sonner";
 import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
 import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle } from "lucide-react";
 
@@ -57,7 +58,17 @@ type AdminDashboardSnapshot = {
   documents: {
     readyToStart: boolean;
     required: Array<{ key: string; label: string; uploaded: boolean; uploadedAt: string | null }>;
-    extra: Array<{ id: number; label: string; originalName: string | null; createdAt: string }>;
+    extra: Array<{
+      id: number;
+      type: string;
+      label: string;
+      token: string;
+      originalName: string | null;
+      mimeType: string | null;
+      size: number | null;
+      uploadedBy: string;
+      createdAt: string;
+    }>;
   };
   bureauReports: AdminBureauReport[];
   totals: { negativeItems: number; disputes: number; deletions: number };
@@ -114,6 +125,7 @@ function ClientDashboardAdminPanel({
   onResetPassword,
   onSaveReport,
   onAddUpdate,
+  onViewDocument,
 }: {
   submissionId: number;
   state?: ClientDashboardAdminResponse;
@@ -123,6 +135,7 @@ function ClientDashboardAdminPanel({
   onResetPassword: (id: number) => void;
   onSaveReport: (id: number, bureau: string, form: HTMLFormElement) => void;
   onAddUpdate: (id: number, form: HTMLFormElement) => void;
+  onViewDocument: (token: string) => void;
 }) {
   if (loading && !state) {
     return (
@@ -197,6 +210,35 @@ function ClientDashboardAdminPanel({
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-md border border-slate-800 bg-slate-900/70 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h5 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Uploaded Documents</h5>
+          <span className="text-xs text-slate-500">{dashboard.documents.extra.length} files</span>
+        </div>
+        {dashboard.documents.extra.length === 0 ? (
+          <p className="text-sm text-slate-500">No client dashboard uploads yet.</p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {dashboard.documents.extra.map((doc) => (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onViewDocument(doc.token); }}
+                className="min-w-0 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-left hover:border-cyan-500/60"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-100">
+                  <FileText size={14} className="shrink-0 text-cyan-300" />
+                  <span className="truncate">{doc.originalName || doc.label}</span>
+                </span>
+                <span className="mt-1 block truncate text-xs text-slate-500">
+                  {doc.label} - {doc.uploadedBy} - {formatDate(doc.createdAt)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -415,7 +457,7 @@ export default function CheckoutSubmissions() {
       const data = await resp.json();
       setRevealedSsn((p) => ({ ...p, [id]: data.ssn }));
     } catch (e: any) {
-      alert(e.message || "Could not reveal SSN");
+      toast.error(e.message || "Could not reveal SSN");
     }
   };
 
@@ -442,7 +484,7 @@ export default function CheckoutSubmissions() {
       if (!resp.ok) throw new Error(data?.message || "Could not load client dashboard");
       setClientDashboards((p) => ({ ...p, [id]: data }));
     } catch (e: any) {
-      alert(e.message || "Could not load client dashboard");
+      toast.error(e.message || "Could not load client dashboard");
     } finally {
       setDashboardLoading((p) => ({ ...p, [id]: false }));
     }
@@ -463,8 +505,9 @@ export default function CheckoutSubmissions() {
       if (data?.portal?.temporaryPassword) {
         setDashboardPasswords((p) => ({ ...p, [id]: data.portal.temporaryPassword }));
       }
+      toast.success(resetPassword ? "Client login password reset." : data?.portal?.created ? "Client login created." : "Client login updated.");
     } catch (e: any) {
-      alert(e.message || "Could not update client account");
+      toast.error(e.message || "Could not update client account");
     } finally {
       setDashboardLoading((p) => ({ ...p, [id]: false }));
     }
@@ -520,8 +563,14 @@ export default function CheckoutSubmissions() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message || "Could not save report");
       setClientDashboards((p) => ({ ...p, [id]: { ...(p[id] || {}), dashboard: data.dashboard, account: data.dashboard.account } }));
+      const savedReport = data.dashboard?.bureauReports?.find((report: AdminBureauReport) => report.bureau === bureau);
+      if (savedReport?.reportParseStatus === "failed") {
+        toast.error(`${savedReport.name} saved, but PDF parse failed.`);
+      } else {
+        toast.success(`${savedReport?.name || "Report"} saved.`);
+      }
     } catch (e: any) {
-      alert(e.message || "Could not save report");
+      toast.error(e.message || "Could not save report");
     } finally {
       setDashboardLoading((p) => ({ ...p, [id]: false }));
     }
@@ -548,8 +597,9 @@ export default function CheckoutSubmissions() {
       if (!resp.ok) throw new Error(data?.message || "Could not add update");
       setClientDashboards((p) => ({ ...p, [id]: { ...(p[id] || {}), dashboard: data.dashboard, account: data.dashboard.account } }));
       form.reset();
+      toast.success("Client update posted.");
     } catch (e: any) {
-      alert(e.message || "Could not add update");
+      toast.error(e.message || "Could not add update");
     } finally {
       setDashboardLoading((p) => ({ ...p, [id]: false }));
     }
@@ -561,7 +611,7 @@ export default function CheckoutSubmissions() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!resp.ok) {
-      alert("Could not load file");
+      toast.error("Could not load file");
       return;
     }
     const blob = await resp.blob();
@@ -583,7 +633,7 @@ export default function CheckoutSubmissions() {
       await mutate("POST", undefined, `/${id}/charge`);
       reload();
     } catch (e: any) {
-      alert(e.message || "Capture failed");
+      toast.error(e.message || "Capture failed");
     } finally {
       setCapturing(null);
     }
@@ -871,6 +921,7 @@ export default function CheckoutSubmissions() {
                             onResetPassword={(id) => upsertClientAccount(id, true)}
                             onSaveReport={saveBureauReport}
                             onAddUpdate={addClientUpdate}
+                            onViewDocument={downloadSecureFile}
                           />
                         </div>
                       </td>
