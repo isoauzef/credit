@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useState } from "react";
 import { Check, Shield, ArrowLeft, ArrowRight } from "lucide-react";
+import { trackFacebookLead } from "../lib/facebookPixel";
 
 type FormState = {
   firstName: string;
@@ -159,9 +160,7 @@ export function QuoteForm() {
       setSubmissionComplete(true);
       setStatusMessage("");
       setFormData({ ...initialFormState });
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Lead");
-      }
+      trackFacebookLead();
     } catch (error) {
       setStatus("error");
       setStatusMessage(

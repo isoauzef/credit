@@ -20,6 +20,7 @@ import SiteSettings from "./components/admin/SiteSettings";
 import ContentManager from "./components/admin/ContentManager";
 import BlogManager from "./components/admin/BlogManager";
 import AccountSettings from "./components/admin/AccountSettings";
+import { trackFacebookPageView } from "./lib/facebookPixel";
 import "./index.css";
 
 function AdminPage({ children }: { children: React.ReactNode }) {
@@ -100,6 +101,29 @@ const router = createBrowserRouter([
     element: <TermsOfService />,
   },
 ]);
+
+if (typeof window !== "undefined") {
+  let lastTrackedLocation = [
+    router.state.location.pathname,
+    router.state.location.search,
+    router.state.location.hash,
+  ].join("");
+
+  router.subscribe((state) => {
+    const nextLocation = [
+      state.location.pathname,
+      state.location.search,
+      state.location.hash,
+    ].join("");
+
+    if (nextLocation === lastTrackedLocation) {
+      return;
+    }
+
+    lastTrackedLocation = nextLocation;
+    trackFacebookPageView();
+  });
+}
 
 createRoot(document.getElementById("root")!).render(
   <>

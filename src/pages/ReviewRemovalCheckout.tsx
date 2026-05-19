@@ -36,6 +36,7 @@ import emblemBlue from "../assets/df36f4e1f0ac313fd0c673284d92e4bd4202491a.png";
 import emblemDark from "../assets/cc179f68e1f2cdec4f23e00b5ae695644333bf02.png";
 import emblemTransparent from "../assets/939d05bc0607ad5ec76c880ea7052eade6ac13fe.png";
 import { usePageContent } from "../hooks/usePageContent";
+import { trackFacebookPurchase } from "../lib/facebookPixel";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -734,6 +735,7 @@ function SubmissionForm() {
   const formCardRef = useRef<HTMLDivElement | null>(null);
   const isFirstRender = useRef(true);
   const copyFeedbackTimeout = useRef<number | null>(null);
+  const purchaseEventTrackedRef = useRef(false);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -1037,6 +1039,10 @@ function SubmissionForm() {
       }
     } catch (_) {
       /* non-blocking */
+    }
+    if (!purchaseEventTrackedRef.current) {
+      trackFacebookPurchase();
+      purchaseEventTrackedRef.current = true;
     }
     setStatus("success");
   };

@@ -4,10 +4,10 @@ import { usePageContent } from "../hooks/usePageContent";
 import emblemTransparent from "../assets/939d05bc0607ad5ec76c880ea7052eade6ac13fe.png";
 import emblemDark from "../assets/cc179f68e1f2cdec4f23e00b5ae695644333bf02.png";
 import emblemBlue from "../assets/df36f4e1f0ac313fd0c673284d92e4bd4202491a.png";
+import { trackFacebookLead } from "../lib/facebookPixel";
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void;
     _tfa?: Array<Record<string, unknown>>;
   }
 }
@@ -297,8 +297,7 @@ export function Hero({
       return;
     }
 
-    window.fbq?.("track", "Lead");
-    console.log("[analytics] Facebook Lead event fired");
+    trackFacebookLead();
     leadEventTrackedRef.current = true;
   };
 
