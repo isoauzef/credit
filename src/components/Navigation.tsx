@@ -5,9 +5,11 @@ import { useSiteSettings } from "../hooks/useSiteSettings";
 export function Navigation({
   minimal = false,
   clientLoginOnly = false,
+  staticHeader = false,
 }: {
   minimal?: boolean;
   clientLoginOnly?: boolean;
+  staticHeader?: boolean;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -88,7 +90,7 @@ export function Navigation({
 
       <nav
         aria-label="Primary"
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`${staticHeader ? "relative" : "fixed top-0 left-0 right-0"} z-50 transition-all duration-300 ${
           minimal || scrolled || isMenuOpen
             ? "bg-slate-900/90 backdrop-blur-md shadow-lg border-b border-white/10"
             : "bg-transparent"

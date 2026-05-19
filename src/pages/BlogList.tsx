@@ -47,8 +47,8 @@ export default function BlogList() {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <Navigation />
-      <main id="main-content" className="pt-24">
+      <Navigation minimal staticHeader />
+      <main id="main-content">
         <section className="border-b border-slate-200 bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">Credit Removers Blog</p>
