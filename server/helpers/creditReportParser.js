@@ -1,6 +1,10 @@
 const path = require("path");
+const { createCanvas, DOMMatrix, Path2D } = require("@napi-rs/canvas");
+
+if (!globalThis.DOMMatrix) globalThis.DOMMatrix = DOMMatrix;
+if (!globalThis.Path2D) globalThis.Path2D = Path2D;
+
 const pdfjs = require("pdfjs-dist/legacy/build/pdf.js");
-const { createCanvas } = require("@napi-rs/canvas");
 const { createWorker } = require("tesseract.js");
 const englishData = require("@tesseract.js-data/eng");
 
