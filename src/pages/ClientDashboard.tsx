@@ -424,7 +424,7 @@ export default function ClientDashboard() {
             <img src={logoSrc} alt="Credit Removers" className="h-10 w-auto max-w-[210px] object-contain drop-shadow-sm" />
           </a>
           <div className="ml-auto flex min-w-0 items-center justify-end gap-3 text-right">
-            <div className="min-w-0">
+            <div className="hidden min-w-0 sm:block">
               <p className="truncate text-[14px] font-semibold text-white">{formatClientName(dashboard.client.name)}</p>
             </div>
           <button

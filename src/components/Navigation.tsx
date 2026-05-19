@@ -2,7 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Menu, X, User } from "lucide-react";
 import { useSiteSettings } from "../hooks/useSiteSettings";
 
-export function Navigation({ minimal = false }: { minimal?: boolean }) {
+export function Navigation({
+  minimal = false,
+  mobileMenu = false,
+}: {
+  minimal?: boolean;
+  mobileMenu?: boolean;
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const settings = useSiteSettings();
@@ -63,6 +69,7 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
   ];
 
   const closeMenu = () => setIsMenuOpen(false);
+  const showNavigation = !minimal || mobileMenu;
 
   // Shared focus-visible ring so keyboard users see a clear indicator
   // against both translucent nav and the dark mobile panel.
@@ -107,10 +114,10 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
               />
             </a>
 
-            {minimal ? null : (
+            {showNavigation ? (
               <>
                 {/* Desktop Navigation */}
-                <div className="hidden lg:flex items-center gap-8">
+                <div className={`${minimal ? "hidden" : "hidden lg:flex"} items-center gap-8`}>
                   {navLinks.map((l) => (
                     <a
                       key={l.href}
@@ -153,12 +160,12 @@ export function Navigation({ minimal = false }: { minimal?: boolean }) {
                   )}
                 </button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
 
         {/* Mobile Navigation panel */}
-        {!minimal && (
+        {showNavigation && (
           <div
             ref={mobilePanelRef}
             id="mobile-menu"
