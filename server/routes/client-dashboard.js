@@ -71,7 +71,7 @@ router.post("/login", async (req, res) => {
 router.get("/dashboard", requireClient, async (req, res) => {
   try {
     const snapshot = await getClientDashboardSnapshot(req.clientAccount.accountId);
-    if (!snapshot) return res.status(404).json({ message: "Dashboard not found." });
+    if (!snapshot) return res.status(401).json({ message: "Session expired. Please log in again." });
     return res.json(snapshot);
   } catch (err) {
     console.error("[client-dashboard] dashboard load failed", err);

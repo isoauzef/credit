@@ -352,8 +352,9 @@ export default function ClientDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await resp.json();
-      if (resp.status === 401) {
-        logout();
+      if (resp.status === 401 || resp.status === 404) {
+        localStorage.removeItem(CLIENT_TOKEN_KEY);
+        navigate("/client-login", { replace: true });
         return;
       }
       if (!resp.ok) throw new Error(data?.message || "Could not load dashboard.");
