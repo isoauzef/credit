@@ -11,6 +11,7 @@ const {
   updateBureauReport,
   addDashboardUpdate,
 } = require("../helpers/clientDashboard");
+const { buildBlogData, serializeBlogPost, slugify } = require("../helpers/blog");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me";
@@ -486,6 +487,106 @@ router.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
   const publicPath = `/uploads/${req.file.filename}`;
   return res.json({ path: publicPath, filename: req.file.filename });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  BLOG POSTS
+// ═══════════════════════════════════════════════════════════════════
+router.get("/blog-posts", async (req, res) => {
+  try {
+    const rows = await prisma.blogPost.findMany({
+      orderBy: [{ updatedAt: "desc" }],
+    });
+    return res.json(rows.map((post) => serializeBlogPost(post, req)));
+  } catch (err) {
+    console.error("[admin] blog list", err);
+    return res.status(500).json({ message: "Failed to load blog posts" });
+  }
+});
+
+router.get("/blog-posts/:id", async (req, res) => {
+  try {
+    const post = await prisma.blogPost.findUnique({ where: { id: Number(req.params.id) } });
+    if (!post) return res.status(404).json({ message: "Blog post not found" });
+    return res.json(serializeBlogPost(post, req));
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to load blog post" });
+  }
+});
+
+router.post("/blog-posts", async (req, res) => {
+  const data = buildBlogData(req.body || {});
+  if (!data.title || !data.contentHtml) {
+    return res.status(400).json({ message: "Title and content are required." });
+  }
+
+  try {
+    const created = await prisma.blogPost.create({ data });
+    return res.status(201).json(serializeBlogPost(created, req));
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(409).json({ message: "A blog post with this slug already exists." });
+    }
+    console.error("[admin] blog create", err);
+    return res.status(500).json({ message: "Failed to create blog post" });
+  }
+});
+
+router.put("/blog-posts/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const data = buildBlogData(req.body || {});
+  if (!data.title || !data.contentHtml) {
+    return res.status(400).json({ message: "Title and content are required." });
+  }
+
+  try {
+    const existing = await prisma.blogPost.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ message: "Blog post not found" });
+    if (data.status === "published" && existing.publishedAt && !req.body?.publishedAt) {
+      data.publishedAt = existing.publishedAt;
+    }
+    const updated = await prisma.blogPost.update({ where: { id }, data });
+    return res.json(serializeBlogPost(updated, req));
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(409).json({ message: "A blog post with this slug already exists." });
+    }
+    console.error("[admin] blog update", err);
+    return res.status(500).json({ message: "Failed to update blog post" });
+  }
+});
+
+router.patch("/blog-posts/:id/status", async (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.body?.status === "published" ? "published" : "draft";
+  try {
+    const existing = await prisma.blogPost.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ message: "Blog post not found" });
+    const updated = await prisma.blogPost.update({
+      where: { id },
+      data: {
+        status,
+        publishedAt: status === "published" ? (existing.publishedAt || new Date()) : null,
+      },
+    });
+    return res.json(serializeBlogPost(updated, req));
+  } catch (err) {
+    console.error("[admin] blog status", err);
+    return res.status(500).json({ message: "Failed to update blog status" });
+  }
+});
+
+router.delete("/blog-posts/:id", async (req, res) => {
+  try {
+    await prisma.blogPost.delete({ where: { id: Number(req.params.id) } });
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(404).json({ message: "Blog post not found" });
+  }
+});
+
+router.post("/blog-posts/slug", (req, res) => {
+  return res.json({ slug: slugify(req.body?.title || req.body?.slug || "") });
 });
 
 // ═══════════════════════════════════════════════════════════════════

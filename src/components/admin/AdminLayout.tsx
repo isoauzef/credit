@@ -9,6 +9,7 @@ import {
   Settings,
   Globe,
   FileText,
+  Newspaper,
   UserCog,
   LogOut,
   Menu,
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/admin/settings", icon: Settings, label: "Settings" },
   { to: "/admin/site", icon: Globe, label: "Site Settings" },
   { to: "/admin/content", icon: FileText, label: "Content Manager" },
+  { to: "/admin/blog", icon: Newspaper, label: "Blog" },
   { to: "/admin/account", icon: UserCog, label: "Account" },
 ];
 

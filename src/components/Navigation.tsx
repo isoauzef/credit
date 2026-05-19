@@ -4,10 +4,10 @@ import { useSiteSettings } from "../hooks/useSiteSettings";
 
 export function Navigation({
   minimal = false,
-  mobileMenu = false,
+  clientLoginOnly = false,
 }: {
   minimal?: boolean;
-  mobileMenu?: boolean;
+  clientLoginOnly?: boolean;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -69,7 +69,7 @@ export function Navigation({
   ];
 
   const closeMenu = () => setIsMenuOpen(false);
-  const showNavigation = !minimal || mobileMenu;
+  const showFullNavigation = !minimal && !clientLoginOnly;
 
   // Shared focus-visible ring so keyboard users see a clear indicator
   // against both translucent nav and the dark mobile panel.
@@ -114,10 +114,19 @@ export function Navigation({
               />
             </a>
 
-            {showNavigation ? (
+            {clientLoginOnly ? (
+              <a
+                href="/client-login"
+                aria-label="Login to your client dashboard"
+                className={`inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-coral-500 to-orange-500 px-4 text-sm font-semibold text-white shadow-md transition-all hover:from-coral-600 hover:to-orange-600 sm:px-5 ${focusRing}`}
+              >
+                <User className="h-4 w-4" aria-hidden="true" />
+                <span>Client Login</span>
+              </a>
+            ) : showFullNavigation ? (
               <>
                 {/* Desktop Navigation */}
-                <div className={`${minimal ? "hidden" : "hidden lg:flex"} items-center gap-8`}>
+                <div className="hidden lg:flex items-center gap-8">
                   {navLinks.map((l) => (
                     <a
                       key={l.href}
@@ -165,7 +174,7 @@ export function Navigation({
         </div>
 
         {/* Mobile Navigation panel */}
-        {showNavigation && (
+        {showFullNavigation && (
           <div
             ref={mobilePanelRef}
             id="mobile-menu"

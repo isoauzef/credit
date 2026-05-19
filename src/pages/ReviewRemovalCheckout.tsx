@@ -1669,7 +1669,7 @@ function CheckboxField({
 export default function ReviewRemovalCheckout() {
   return (
     <div className="min-h-screen bg-white">
-      <Navigation minimal mobileMenu />
+      <Navigation minimal clientLoginOnly />
       <CheckoutHero />
       <KPIMobile />
       <StatsBar />

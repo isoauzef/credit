@@ -19,6 +19,7 @@ const {
   buildPortalUrls,
   ensureClientDashboardAccountForSubmission,
 } = require("./helpers/clientDashboard");
+const { serializeBlogPost } = require("./helpers/blog");
 
 const app = express();
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3001);
@@ -120,6 +121,35 @@ app.get("/api/settings/public", async (_req, res) => {
 });
 
 // ── Contact form (homepage quote form) ──────────────────────────
+// Public blog posts.
+app.get("/api/blog", async (req, res) => {
+  try {
+    const posts = await prisma.blogPost.findMany({
+      where: { status: "published" },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+    });
+    return res.json(posts.map((post) => serializeBlogPost(post, req)));
+  } catch (err) {
+    console.error("[blog] list", err);
+    return res.status(500).json({ message: "Failed to load blog posts" });
+  }
+});
+
+app.get("/api/blog/:slug", async (req, res) => {
+  try {
+    const post = await prisma.blogPost.findUnique({
+      where: { slug: String(req.params.slug || "") },
+    });
+    if (!post || post.status !== "published") {
+      return res.status(404).json({ message: "Blog post not found" });
+    }
+    return res.json(serializeBlogPost(post, req));
+  } catch (err) {
+    console.error("[blog] detail", err);
+    return res.status(500).json({ message: "Failed to load blog post" });
+  }
+});
+
 app.post("/api/contact", async (req, res) => {
   const { name, phone, email, problem, agreed, source, metadata } = req.body || {};
 
@@ -768,6 +798,74 @@ app.use("/api/client", clientDashboardRoutes);
 const uploadsDir = path.join(__dirname, "..", "public", "uploads");
 app.use("/uploads", express.static(uploadsDir, { fallthrough: true }));
 
+function escapeHtmlAttr(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function absoluteUrl(req, value) {
+  const origin = `${req.protocol}://${req.get("host")}`;
+  if (!value) return origin;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (String(value).startsWith("/")) return `${origin}${value}`;
+  return `${origin}/${value}`;
+}
+
+function upsertMeta(html, key, content, attrName = "name") {
+  if (!content) return html;
+  const tag = `<meta ${attrName}="${key}" content="${escapeHtmlAttr(content)}" />`;
+  const re = new RegExp(`<meta\\s+${attrName}=["']${key}["'][^>]*>`, "i");
+  return re.test(html) ? html.replace(re, tag) : html.replace("</head>", `${tag}</head>`);
+}
+
+function upsertCanonical(html, href) {
+  const tag = `<link rel="canonical" href="${escapeHtmlAttr(href)}" />`;
+  const re = /<link\s+rel=["']canonical["'][^>]*>/i;
+  return re.test(html) ? html.replace(re, tag) : html.replace("</head>", `${tag}</head>`);
+}
+
+async function injectBlogMeta(req, html) {
+  if (!req.path.startsWith("/blog")) return html;
+
+  let meta = {
+    title: "Credit Removers Blog",
+    description: "Credit repair guides, credit bureau education, dispute strategy, and client dashboard updates from Credit Removers.",
+    image: absoluteUrl(req, "/removers-og-image.jpg"),
+    canonical: absoluteUrl(req, "/blog"),
+    type: "website",
+  };
+
+  const match = req.path.match(/^\/blog\/([^/?#]+)/);
+  if (match) {
+    const post = await prisma.blogPost.findUnique({ where: { slug: decodeURIComponent(match[1]) } });
+    if (post && post.status === "published") {
+      meta = {
+        title: post.metaTitle || post.ogTitle || post.title,
+        description: post.metaDescription || post.ogDescription || post.excerpt || "",
+        image: absoluteUrl(req, post.ogImageUrl || post.featuredImageUrl || "/removers-og-image.jpg"),
+        canonical: absoluteUrl(req, `/blog/${post.slug}`),
+        type: "article",
+      };
+    }
+  }
+
+  html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`);
+  html = upsertMeta(html, "description", meta.description);
+  html = upsertMeta(html, "og:type", meta.type, "property");
+  html = upsertMeta(html, "og:url", meta.canonical, "property");
+  html = upsertMeta(html, "og:title", meta.title, "property");
+  html = upsertMeta(html, "og:description", meta.description, "property");
+  html = upsertMeta(html, "og:image", meta.image, "property");
+  html = upsertMeta(html, "twitter:card", "summary_large_image");
+  html = upsertMeta(html, "twitter:title", meta.title);
+  html = upsertMeta(html, "twitter:description", meta.description);
+  html = upsertMeta(html, "twitter:image", meta.image);
+  return upsertCanonical(html, meta.canonical);
+}
+
 // ── Static files + SPA fallback ─────────────────────────────────
 if (fs.existsSync(buildDirectory)) {
   // Serve index.html with injected site settings so logo/title render
@@ -782,7 +880,7 @@ if (fs.existsSync(buildDirectory)) {
     return cachedIndexHtml;
   };
 
-  const serveIndex = async (_req, res) => {
+  const serveIndex = async (req, res) => {
     let html = loadIndexHtml();
     try {
       const rows = await prisma.setting.findMany({ where: { group: "site" } });
@@ -790,8 +888,9 @@ if (fs.existsSync(buildDirectory)) {
       for (const r of rows) settings[r.key] = r.value;
       const inject = `<script>window.__SITE_SETTINGS__=${JSON.stringify(settings).replace(/</g, "\\u003c")};</script>`;
       html = html.replace("</head>", `${inject}</head>`);
+      html = await injectBlogMeta(req, html);
     } catch (err) {
-      console.warn("[server] could not inject site settings:", err.message);
+      console.warn("[server] could not inject site settings or page metadata:", err.message);
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");

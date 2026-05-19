@@ -89,7 +89,7 @@ export default function ClientLogin() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-950 outline-none transition focus:border-[#1e5a8a]/50 focus:bg-white focus:ring-2 focus:ring-[#1e5a8a]/15"
-                  placeholder="Temporary password"
+                  placeholder="Password"
                 />
               </span>
             </label>

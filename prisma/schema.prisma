@@ -201,3 +201,25 @@ model PageContent {
   @@unique([page, section])
   @@map("page_content")
 }
+
+model BlogPost {
+  id               Int       @id @default(autoincrement())
+  title            String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(255)
+  excerpt          String?   @db.Text
+  contentHtml      String    @db.LongText
+  featuredImageUrl String?   @db.VarChar(1000)
+  featuredImageAlt String?   @db.VarChar(255)
+  status           String    @default("draft") @db.VarChar(32)
+  metaTitle        String?   @db.VarChar(255)
+  metaDescription  String?   @db.VarChar(500)
+  ogTitle          String?   @db.VarChar(255)
+  ogDescription    String?   @db.VarChar(500)
+  ogImageUrl       String?   @db.VarChar(1000)
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
+}

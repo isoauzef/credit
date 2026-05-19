@@ -1,7 +1,8 @@
 import { FormEvent, Fragment, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
-import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle } from "lucide-react";
+import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle, Newspaper } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
@@ -712,14 +713,23 @@ export default function CheckoutSubmissions() {
             {data?.length ?? 0} total checkout orders with Stripe payment status.
           </p>
         </div>
-        <button
-          onClick={reload}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            to="/admin/blog"
+            className="flex items-center gap-2 rounded-lg border border-blue-500/40 px-4 py-2 text-sm font-semibold text-blue-300 hover:bg-blue-500/10"
+          >
+            <Newspaper size={16} />
+            Blog Manager
+          </Link>
+          <button
+            onClick={reload}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">

@@ -7,6 +7,8 @@ import TermsOfService from "./pages/TermsOfService";
 import ReviewRemovalCheckout from "./pages/ReviewRemovalCheckout";
 import ClientDashboard from "./pages/ClientDashboard";
 import ClientLogin from "./pages/ClientLogin";
+import BlogList from "./pages/BlogList";
+import BlogPost from "./pages/BlogPost";
 import { AdminAuthProvider } from "./hooks/useAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
 import DashboardHome from "./components/admin/DashboardHome";
@@ -16,6 +18,7 @@ import EmailTemplates from "./components/admin/EmailTemplates";
 import SettingsPage from "./components/admin/SettingsPage";
 import SiteSettings from "./components/admin/SiteSettings";
 import ContentManager from "./components/admin/ContentManager";
+import BlogManager from "./components/admin/BlogManager";
 import AccountSettings from "./components/admin/AccountSettings";
 import "./index.css";
 
@@ -45,6 +48,14 @@ const router = createBrowserRouter([
     element: <ClientDashboard />,
   },
   {
+    path: "/blog",
+    element: <BlogList />,
+  },
+  {
+    path: "/blog/:slug",
+    element: <BlogPost />,
+  },
+  {
     path: "/admin",
     element: <AdminPage><DashboardHome /></AdminPage>,
   },
@@ -71,6 +82,10 @@ const router = createBrowserRouter([
   {
     path: "/admin/content",
     element: <AdminPage><ContentManager /></AdminPage>,
+  },
+  {
+    path: "/admin/blog",
+    element: <AdminPage><BlogManager /></AdminPage>,
   },
   {
     path: "/admin/account",
