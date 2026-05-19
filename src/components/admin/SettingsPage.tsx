@@ -79,7 +79,6 @@ export default function SettingsPage() {
         { key: "smtp_user", label: "Username" },
         { key: "smtp_pass", label: "Password" },
         { key: "smtp_from", label: "From Address" },
-        { key: "smtp_reply_to", label: "Reply-To" },
       ],
     },
     {

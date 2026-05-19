@@ -40,14 +40,6 @@ function smtpFrom() {
   } catch { return process.env.SMTP_FROM; }
 }
 
-function smtpReplyTo() {
-  try {
-    const { getSmtpConfig } = require("../helpers/runtime");
-    const smtp = getSmtpConfig();
-    return smtp?.smtp_reply_to || process.env.SMTP_REPLY_TO || smtpFrom();
-  } catch { return process.env.SMTP_REPLY_TO || process.env.SMTP_FROM; }
-}
-
 /** Reset cached transporter (called when SMTP settings change) */
 function resetTransporter() { cachedTransporter = null; }
 
@@ -74,7 +66,6 @@ async function sendSubmissionEmail(submission) {
   const info = await transporter.sendMail({
     from: smtpFrom(),
     to: recipientEmail,
-    replyTo: smtpReplyTo(),
     subject,
     text,
     html,
@@ -111,7 +102,6 @@ async function sendCheckoutSuccessEmail(submission, portalCredentials = null) {
   const info = await transporter.sendMail({
     from: smtpFrom(),
     to: submission.email,
-    replyTo: smtpReplyTo(),
     subject,
     text,
     html,
