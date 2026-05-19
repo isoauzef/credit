@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { Toaster } from "sonner";
 import App from "./App";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -7,7 +7,6 @@ import TermsOfService from "./pages/TermsOfService";
 import ReviewRemovalCheckout from "./pages/ReviewRemovalCheckout";
 import ClientDashboard from "./pages/ClientDashboard";
 import ClientLogin from "./pages/ClientLogin";
-import BlogList from "./pages/BlogList";
 import BlogPost from "./pages/BlogPost";
 import { AdminAuthProvider } from "./hooks/useAdmin";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -50,7 +49,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/blog",
-    element: <BlogList />,
+    element: <Navigate to="/" replace />,
   },
   {
     path: "/blog/:slug",

@@ -828,29 +828,21 @@ function upsertCanonical(html, href) {
 }
 
 async function injectBlogMeta(req, html) {
-  if (!req.path.startsWith("/blog")) return html;
-
-  let meta = {
-    title: "Credit Removers Blog",
-    description: "Credit repair guides, credit bureau education, dispute strategy, and client dashboard updates from Credit Removers.",
-    image: absoluteUrl(req, "/removers-og-image.jpg"),
-    canonical: absoluteUrl(req, "/blog"),
-    type: "website",
-  };
-
   const match = req.path.match(/^\/blog\/([^/?#]+)/);
-  if (match) {
-    const post = await prisma.blogPost.findUnique({ where: { slug: decodeURIComponent(match[1]) } });
-    if (post && post.status === "published") {
-      meta = {
-        title: post.metaTitle || post.ogTitle || post.title,
-        description: post.metaDescription || post.ogDescription || post.excerpt || "",
-        image: absoluteUrl(req, post.ogImageUrl || post.featuredImageUrl || "/removers-og-image.jpg"),
-        canonical: absoluteUrl(req, `/blog/${post.slug}`),
-        type: "article",
-      };
-    }
+  if (!match) return html;
+
+  const post = await prisma.blogPost.findUnique({ where: { slug: decodeURIComponent(match[1]) } });
+  if (!post || post.status !== "published") {
+    return html;
   }
+
+  const meta = {
+    title: post.metaTitle || post.ogTitle || post.title,
+    description: post.metaDescription || post.ogDescription || post.excerpt || "",
+    image: absoluteUrl(req, post.ogImageUrl || post.featuredImageUrl || "/removers-og-image.jpg"),
+    canonical: absoluteUrl(req, `/blog/${post.slug}`),
+    type: "article",
+  };
 
   html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`);
   html = upsertMeta(html, "description", meta.description);
@@ -868,6 +860,8 @@ async function injectBlogMeta(req, html) {
 
 // ── Static files + SPA fallback ─────────────────────────────────
 if (fs.existsSync(buildDirectory)) {
+  app.get(["/blog", "/blog/"], (_req, res) => res.redirect(301, "/"));
+
   // Serve index.html with injected site settings so logo/title render
   // without a flash of the default values.
   const indexHtmlPath = path.join(buildDirectory, "index.html");
