@@ -158,7 +158,7 @@ h1 > a {
   padding: 0 15px;
   color: #212529;
   font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1.5;
 }
 
@@ -185,6 +185,14 @@ h1 > a {
 
 .spq-template .spq-block {
   margin: 20px 0;
+}
+
+.spq-template .spq-copy,
+.spq-template .spq-copy span,
+.spq-template .spq-copy font,
+.spq-template .spq-copy div:not(.blog-image-row),
+.spq-template .blog-image-row span {
+  font-size: 22px !important;
 }
 
 .spq-template .spq-section-title {
