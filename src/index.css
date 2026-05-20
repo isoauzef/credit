@@ -10,6 +10,7 @@ h1 > a {
   color: #334155;
   font-size: 1rem;
   line-height: 1.8;
+  overflow-wrap: anywhere;
 }
 
 .blog-content > * + * {
@@ -58,9 +59,28 @@ h1 > a {
 }
 
 .blog-content img {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  height: auto;
   border-radius: 0.9rem;
   object-fit: cover;
+}
+
+.blog-content figure,
+.blog-content .blog-image-row {
+  max-width: 100%;
+}
+
+.blog-content figure {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.blog-content figure img,
+.blog-content p > img {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .blog-hero-card,
@@ -121,13 +141,13 @@ h1 > a {
 
 @media (max-width: 640px) {
   .blog-content .blog-image-row {
-    margin-left: -1rem;
-    margin-right: -1rem;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   .blog-content .blog-image-row img,
   .blog-content > img {
-    border-radius: 0;
+    border-radius: 0.75rem;
   }
 }
 
@@ -143,6 +163,7 @@ h1 > a {
 }
 
 .spq-template * {
+  box-sizing: border-box;
   transition: all 0.5s ease 0s;
 }
 
@@ -246,6 +267,7 @@ h1 > a {
   }
 
   .spq-template .spq-copy,
+  .spq-template .spq-block.spq-center,
   .spq-template .spq-section-title,
   .spq-template .spq-title,
   .spq-template .spq-small-link,
@@ -259,8 +281,12 @@ h1 > a {
     max-width: 100%;
   }
 
+  .spq-template .spq-center .spq-image {
+    width: 100%;
+  }
+
   .spq-template .spq-button {
-    width: calc(100% - 30px);
+    width: 100%;
     font-size: 1.75em;
   }
 }
