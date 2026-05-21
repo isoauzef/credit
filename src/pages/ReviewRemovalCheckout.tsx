@@ -1041,7 +1041,7 @@ function SubmissionForm() {
       /* non-blocking */
     }
     if (!purchaseEventTrackedRef.current) {
-      trackFacebookPurchase();
+      trackFacebookPurchase({ value: 100, currency: "USD" });
       purchaseEventTrackedRef.current = true;
     }
     setStatus("success");
