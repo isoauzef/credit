@@ -1336,8 +1336,8 @@ function SubmissionForm() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1e5a8a] focus:ring-[#1e5a8a]/30"
                 />
                 <span className="text-sm text-gray-600 leading-relaxed">
-                  I agree to Credit Removers pricing. <strong>$400 per month</strong>, paid only upon successful
-                  removals. 3 month program. <strong>$1200 total</strong>.
+                  I agree to Credit Removers pricing. <strong>$100 per item</strong> removed, paid only upon successful
+                  removals.
                   <span className="text-red-400 ml-0.5">*</span>
                 </span>
               </label>
@@ -1348,8 +1348,7 @@ function SubmissionForm() {
           {step === 4 && (status === "card_step" || status === "saving_card") && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
-                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only billed once
-                we begin work and you approve the engagement.
+                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged once we confirm the removals.
               </p>
               {stripePromise && clientSecret ? (
                 // PaymentElement requires clientSecret in Elements options.
