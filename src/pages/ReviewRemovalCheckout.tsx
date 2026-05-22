@@ -1419,7 +1419,7 @@ function SubmissionForm() {
           {step === 3 && (status === "card_step" || status === "saving_card") && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
-                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged once we confirm the removals.
+                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged $200 once we confirm the removals.
               </p>
               {stripePromise && clientSecret ? (
                 // PaymentElement requires clientSecret in Elements options.

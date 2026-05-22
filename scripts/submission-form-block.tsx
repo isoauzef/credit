@@ -592,7 +592,7 @@ function SubmissionForm() {
           {step === 4 && status === "card_step" && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
-                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged once we confirm the removals.
+                Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged $200 once we confirm the removals.
               </p>
               {stripePromise && clientSecret ? (
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
