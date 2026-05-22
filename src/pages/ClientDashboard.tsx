@@ -378,10 +378,6 @@ export default function ClientDashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const missingRequired = useMemo(
-    () => dashboard?.documents.required.filter((item) => !item.uploaded) || [],
-    [dashboard]
-  );
   const positiveHistory = useMemo(
     () => dashboard?.bureauReports.filter((report) => report.positivesNote.trim()) || [],
     [dashboard]
@@ -455,11 +451,11 @@ export default function ClientDashboard() {
               )}
               <div>
                 <h2 className="font-semibold">
-                  {dashboard.documents.readyToStart ? "Documents received - ready to start" : "Documents needed before we can start"}
+                  {dashboard.documents.readyToStart ? "Documents received - ready to start" : "Documents needed for adding positive payment history"}
                 </h2>
                 {!dashboard.documents.readyToStart && (
                   <p className="mt-1 text-sm">
-                    We cannot start the process without: {missingRequired.map((item) => item.label).join(", ")}.
+                    Upload any bills you have paid on time for example mobile phone bills, utility bills, cable tv bills, car insurance payments and upload a picture of id
                   </p>
                 )}
               </div>
@@ -557,7 +553,7 @@ export default function ClientDashboard() {
 
           <aside className="space-y-6">
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold">Required Documents</h2>
+              <h2 className="text-lg font-semibold">Upload documents</h2>
               <div className="mt-4 space-y-3">
                 {dashboard.documents.required.map((doc) => (
                   <div key={doc.key} className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">

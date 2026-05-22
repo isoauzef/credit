@@ -384,8 +384,7 @@ async function getClientDashboardSnapshot(accountId) {
     submission.utilityDocPath ||
     extraDocs.some((doc) => doc.type === "utility_bill" || doc.type === "additional_utility_bill")
   );
-  const hasSignedAgreement = Boolean(submission.signedAt);
-  const readyToStart = hasPhotoId && hasUtilityBill && hasSignedAgreement;
+  const readyToStart = hasPhotoId && hasUtilityBill;
   const photoIdDoc = extraDocs.find((doc) => doc.type === "photo_id");
   const utilityDoc = extraDocs.find((doc) => doc.type === "utility_bill" || doc.type === "additional_utility_bill");
 
@@ -449,7 +448,6 @@ async function getClientDashboardSnapshot(accountId) {
     documents: {
       readyToStart,
       required: [
-        { key: "signed_agreement", label: "Signed Client Agreement", uploaded: hasSignedAgreement, uploadedAt: serializeDate(submission.signedAt) },
         { key: "photo_id", label: "Government Photo ID", uploaded: hasPhotoId, uploadedAt: submission.idDocPath ? serializeDate(submission.createdAt) : photoIdDoc?.createdAt || null },
         { key: "utility_bill", label: "Utility Bill", uploaded: hasUtilityBill, uploadedAt: submission.utilityDocPath ? serializeDate(submission.createdAt) : utilityDoc?.createdAt || null },
       ],
