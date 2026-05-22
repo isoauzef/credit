@@ -2,7 +2,7 @@ import { FormEvent, Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
-import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle, Newspaper } from "lucide-react";
+import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle, Newspaper, Eye, EyeOff, Loader2 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
@@ -479,6 +479,8 @@ export default function CheckoutSubmissions() {
   const [capturing, setCapturing] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [signatures, setSignatures] = useState<Record<number, { signatureDataUrl: string | null; signedAt: string | null; authLetterSnapshot: string | null }>>({});
+  const [revealedSsns, setRevealedSsns] = useState<Record<number, string>>({});
+  const [ssnLoading, setSsnLoading] = useState<Record<number, boolean>>({});
   const [clientDashboards, setClientDashboards] = useState<Record<number, ClientDashboardAdminResponse>>({});
   const [dashboardPasswords, setDashboardPasswords] = useState<Record<number, string>>({});
   const [dashboardLoading, setDashboardLoading] = useState<Record<number, boolean>>({});
@@ -493,6 +495,31 @@ export default function CheckoutSubmissions() {
       const data = await resp.json();
       setSignatures((p) => ({ ...p, [id]: data }));
     } catch (_) { /* ignore */ }
+  };
+
+  const toggleSsn = async (id: number) => {
+    if (revealedSsns[id]) {
+      setRevealedSsns((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+    if (!token) return;
+    setSsnLoading((prev) => ({ ...prev, [id]: true }));
+    try {
+      const resp = await fetch(`/api/admin/checkout-submissions/${id}/ssn`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(data?.message || "Could not load SSN");
+      setRevealedSsns((prev) => ({ ...prev, [id]: data.ssn }));
+    } catch (e: any) {
+      toast.error(e.message || "Could not load SSN");
+    } finally {
+      setSsnLoading((prev) => ({ ...prev, [id]: false }));
+    }
   };
 
   const loadClientDashboard = async (id: number) => {
@@ -902,7 +929,32 @@ export default function CheckoutSubmissions() {
                                 {s.ssnLast4 && (
                                   <div>
                                     <p className="text-slate-500 text-xs mb-1">SSN Last 4</p>
-                                    <p className="text-slate-200 font-mono">***-**-{s.ssnLast4}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-slate-200 font-mono">
+                                        {revealedSsns[s.id] || `***-**-${s.ssnLast4}`}
+                                      </p>
+                                      {s.hasFullSsn && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void toggleSsn(s.id);
+                                          }}
+                                          disabled={Boolean(ssnLoading[s.id])}
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/70 text-slate-400 transition hover:border-cyan-500/50 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                                          title={revealedSsns[s.id] ? "Hide full SSN" : "Show full SSN"}
+                                          aria-label={revealedSsns[s.id] ? "Hide full SSN" : "Show full SSN"}
+                                        >
+                                          {ssnLoading[s.id] ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : revealedSsns[s.id] ? (
+                                            <EyeOff className="h-3.5 w-3.5" />
+                                          ) : (
+                                            <Eye className="h-3.5 w-3.5" />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>

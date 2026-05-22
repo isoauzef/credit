@@ -12,6 +12,7 @@ const {
   addDashboardUpdate,
 } = require("../helpers/clientDashboard");
 const { buildBlogData, serializeBlogPost, slugify } = require("../helpers/blog");
+const { decryptPII } = require("../helpers/encryption");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me";
@@ -137,7 +138,7 @@ router.get("/checkout-submissions", async (_req, res) => {
       select: {
         id: true, name: true, email: true, phone: true, companyName: true,
         googleDataId: true, reviewLinks: true, reason: true, quantity: true, amount: true,
-        address: true, dob: true, ssnLast4: true,
+        address: true, dob: true, ssnLast4: true, ssnEncrypted: true,
         idDocPath: true, utilityDocPath: true, creditReportDocPath: true,
         signedAt: true,
         stripeSessionId: true, stripePaymentIntentId: true, stripeCustomerId: true,
@@ -146,10 +147,37 @@ router.get("/checkout-submissions", async (_req, res) => {
         createdAt: true, updatedAt: true,
       },
     });
-    return res.json(rows);
+    return res.json(rows.map(({ ssnEncrypted, ...row }) => ({
+      ...row,
+      hasFullSsn: Boolean(ssnEncrypted),
+    })));
   } catch (err) {
     console.error("[admin] checkout-submissions list", err);
     return res.status(500).json({ message: "Failed to load" });
+  }
+});
+
+router.get("/checkout-submissions/:id/ssn", async (req, res) => {
+  try {
+    const sub = await prisma.checkoutSubmission.findUnique({
+      where: { id: Number(req.params.id) },
+      select: { ssnEncrypted: true, ssnLast4: true },
+    });
+    if (!sub) return res.status(404).json({ message: "Not found" });
+    if (!sub.ssnEncrypted) {
+      return res.status(404).json({ message: "Full SSN is not available for this submission.", ssnLast4: sub.ssnLast4 });
+    }
+
+    const ssn = await decryptPII(sub.ssnEncrypted);
+    if (!ssn) return res.status(404).json({ message: "Full SSN is not available for this submission.", ssnLast4: sub.ssnLast4 });
+    const digits = String(ssn).replace(/\D/g, "");
+    const formatted = digits.length === 9
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`
+      : String(ssn);
+    return res.json({ ssn: formatted, ssnLast4: sub.ssnLast4 });
+  } catch (err) {
+    console.error("[admin] checkout-submission ssn decrypt failed", err.message);
+    return res.status(500).json({ message: "Failed to decrypt SSN." });
   }
 });
 

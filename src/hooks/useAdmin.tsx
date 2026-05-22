@@ -33,6 +33,7 @@ export type CheckoutSubmission = {
   address?: string | null;
   dob?: string | null;
   ssnLast4?: string | null;
+  hasFullSsn?: boolean;
   idDocPath?: string | null;
   utilityDocPath?: string | null;
   creditReportDocPath?: string | null;
