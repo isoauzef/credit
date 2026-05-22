@@ -410,6 +410,10 @@ interface CreditRepairForm {
   email: string;
   phone: string;
   address: string;
+  addressUnit: string;
+  addressZip: string;
+  addressCity: string;
+  addressState: string;
   dob: string;
   ssn: string;
 }
@@ -420,9 +424,66 @@ const blankCreditForm: CreditRepairForm = {
   email: "",
   phone: "",
   address: "",
+  addressUnit: "",
+  addressZip: "",
+  addressCity: "",
+  addressState: "",
   dob: "",
   ssn: "",
 };
+
+const US_STATES = [
+  "Alabama",
+  "Alaska",
+  "Arizona",
+  "Arkansas",
+  "California",
+  "Colorado",
+  "Connecticut",
+  "Delaware",
+  "Florida",
+  "Georgia",
+  "Hawaii",
+  "Idaho",
+  "Illinois",
+  "Indiana",
+  "Iowa",
+  "Kansas",
+  "Kentucky",
+  "Louisiana",
+  "Maine",
+  "Maryland",
+  "Massachusetts",
+  "Michigan",
+  "Minnesota",
+  "Mississippi",
+  "Missouri",
+  "Montana",
+  "Nebraska",
+  "Nevada",
+  "New Hampshire",
+  "New Jersey",
+  "New Mexico",
+  "New York",
+  "North Carolina",
+  "North Dakota",
+  "Ohio",
+  "Oklahoma",
+  "Oregon",
+  "Pennsylvania",
+  "Rhode Island",
+  "South Carolina",
+  "South Dakota",
+  "Tennessee",
+  "Texas",
+  "Utah",
+  "Vermont",
+  "Virginia",
+  "Washington",
+  "West Virginia",
+  "Wisconsin",
+  "Wyoming",
+];
 
 interface UploadedDoc {
   token: string;
@@ -452,6 +513,17 @@ function formatPhone(raw: string): string {
   if (digits.length <= 3) return `(${digits}`;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function formatFullAddress(form: CreditRepairForm): string {
+  const line1 = form.address.trim();
+  const unit = form.addressUnit.trim();
+  const city = form.addressCity.trim();
+  const state = form.addressState.trim();
+  const zip = form.addressZip.trim();
+  const street = [line1, unit ? `Unit/Apt ${unit}` : ""].filter(Boolean).join(", ");
+  const locality = [city, state, zip].filter(Boolean).join(", ");
+  return [street, locality].filter(Boolean).join(", ");
 }
 
 async function convertHeicIfNeeded(file: File): Promise<File> {
@@ -658,7 +730,7 @@ function FileDropzone({
 }
 
 function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
-  const labels = ["Personal Info", "Authorization", "Add Card"];
+  const labels = ["Personal Info", "Identity Details", "Add Card"];
   return (
     <div className="flex items-center justify-between gap-2 mb-8">
       {labels.map((label, i) => {
@@ -816,6 +888,9 @@ function SubmissionForm() {
     email: "Email",
     phone: "Phone",
     address: "Home Address",
+    addressZip: "Zip Code",
+    addressCity: "City",
+    addressState: "State",
     dob: "Date of Birth",
     ssn: "Last 4 of SSN",
   };
@@ -861,16 +936,25 @@ function SubmissionForm() {
     else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "exists") errs.email = emailCheck.message || duplicateEmailMessage;
     else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "error") errs.email = emailCheck.message || "Could not check this email right now.";
     if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
+    return errs;
+  }, [duplicateEmailMessage, emailCheck, form.email, form.firstName, form.lastName, form.phone]);
+
+  const step2Errors = useMemo(() => {
+    const errs: Partial<Record<keyof CreditRepairForm, string>> = {};
     if (!form.address.trim()) errs.address = "Required";
     else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
     else if (!/[A-Za-z]/.test(form.address.trim())) errs.address = "Address must include a street name";
     else if (form.address.trim().length < 5) errs.address = "Enter your full street address";
+    if (!/^\d{5}(?:-\d{4})?$/.test(form.addressZip.trim())) errs.addressZip = "Enter a valid zip code";
+    if (!/[A-Za-z]/.test(form.addressCity.trim())) errs.addressCity = "Enter your city";
+    if (!form.addressState.trim()) errs.addressState = "Select your state";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
     if (form.ssn.replace(/\D/g, "").length !== 4) errs.ssn = "Enter the last 4 digits of your SSN";
     return errs;
-  }, [duplicateEmailMessage, emailCheck, form]);
+  }, [form.address, form.addressCity, form.addressState, form.addressZip, form.dob, form.ssn]);
 
   const [showStep1Errors, setShowStep1Errors] = useState(false);
+  const [showStep2Errors, setShowStep2Errors] = useState(false);
 
   const goNext = async () => {
     if (step === 1) {
@@ -899,6 +983,7 @@ function SubmissionForm() {
         return;
       }
       setShowStep1Errors(false);
+      setShowStep2Errors(false);
       setErrorMsg("");
       setStep(2);
       return;
@@ -917,7 +1002,7 @@ function SubmissionForm() {
 
   const authLetterText = useMemo(() => {
     const name = `${form.firstName} ${form.lastName}`.trim() || "[Your Name]";
-    const address = form.address || "[Your Address]";
+    const address = formatFullAddress(form) || "[Your Address]";
     const phone = form.phone || "[Your Phone]";
     const dobDisplay = form.dob
       ? new Date(form.dob + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
@@ -954,7 +1039,7 @@ function SubmissionForm() {
     lastName: form.lastName.trim(),
     email: form.email.trim(),
     phone: form.phone,
-    address: form.address.trim(),
+    address: formatFullAddress(form),
     dob: form.dob,
     ssn: form.ssn.replace(/\D/g, ""),
     idDocToken: null,
@@ -967,7 +1052,9 @@ function SubmissionForm() {
   const handleSubmitForReview = async (e: FormEvent) => {
     e.preventDefault();
     if (status !== "idle" && status !== "error") return;
-    if (Object.keys(step1Errors).length) {
+    if (Object.keys(step1Errors).length || Object.keys(step2Errors).length) {
+      setShowStep1Errors(Object.keys(step1Errors).length > 0);
+      setShowStep2Errors(Object.keys(step2Errors).length > 0);
       setErrorMsg("Please complete all previous steps.");
       return;
     }
@@ -1182,56 +1269,6 @@ function SubmissionForm() {
                 </Field>
               </div>
 
-              <Field id="address" label="Home Address" required hint="street, city, state, zip" error={showStep1Errors ? step1Errors.address : undefined}>
-                <input
-                  id="address"
-                  type="text"
-                  inputMode="text"
-                  autoComplete="street-address"
-                  className={`${inputClass} ${showStep1Errors && step1Errors.address ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                  value={form.address}
-                  onChange={(e) => {
-                    let v = e.target.value;
-                    // First non-whitespace character must be a digit (street number).
-                    const trimmedStart = v.replace(/^\s+/, "");
-                    if (trimmedStart.length > 0 && !/^\d/.test(trimmedStart)) {
-                      v = trimmedStart.replace(/^\D+/, "");
-                    }
-                    update("address", v);
-                  }}
-                  placeholder="123 Main St, Springfield, IL 62704"
-                />
-              </Field>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Field id="dob" label="Date of Birth" required error={showStep1Errors ? step1Errors.dob : undefined}>
-                  <input
-                    id="dob"
-                    type="date"
-                    autoComplete="bday"
-                    className={`${inputClass} ${showStep1Errors && step1Errors.dob ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                    value={form.dob}
-                    onChange={(e) => update("dob", e.target.value)}
-                    max={new Date().toISOString().slice(0, 10)}
-                  />
-                </Field>
-                <Field id="ssn" label="Last 4 of SSN" required error={showStep1Errors ? step1Errors.ssn : undefined}>
-                  <div className="relative">
-                    <input
-                      id="ssn"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      className={`${inputClass} pr-10 font-mono tracking-wider ${showStep1Errors && step1Errors.ssn ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                      value={form.ssn}
-                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      placeholder="1234"
-                    />
-                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  </div>
-                </Field>
-              </div>
-
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">
                 <Shield className="w-4 h-4 text-[#1e5a8a] flex-shrink-0" />
                 All transactions are secure and encrypted.
@@ -1242,10 +1279,110 @@ function SubmissionForm() {
           {/* ── Step 2: Authorization ── */}
           {step === 2 && (
             <div className="space-y-5">
-              <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
-                <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans leading-relaxed">
-{authLetterText}
-                </pre>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)]">
+                <Field id="address" label="Home Address" required error={showStep2Errors ? step2Errors.address : undefined}>
+                  <input
+                    id="address"
+                    type="text"
+                    inputMode="text"
+                    autoComplete="address-line1"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.address ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    value={form.address}
+                    onChange={(e) => {
+                      let v = e.target.value;
+                      const trimmedStart = v.replace(/^\s+/, "");
+                      if (trimmedStart.length > 0 && !/^\d/.test(trimmedStart)) {
+                        v = trimmedStart.replace(/^\D+/, "");
+                      }
+                      update("address", v);
+                    }}
+                    placeholder="292 West 5th St"
+                  />
+                </Field>
+
+                <Field id="addressUnit" label="Unit/Apartment">
+                  <input
+                    id="addressUnit"
+                    type="text"
+                    autoComplete="address-line2"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5`}
+                    value={form.addressUnit}
+                    onChange={(e) => update("addressUnit", e.target.value)}
+                    placeholder="Apt 4B"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field id="addressZip" label="Zip Code" required error={showStep2Errors ? step2Errors.addressZip : undefined}>
+                  <input
+                    id="addressZip"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.addressZip ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    value={form.addressZip}
+                    onChange={(e) => update("addressZip", e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
+                    placeholder="92929"
+                  />
+                </Field>
+
+                <Field id="addressCity" label="City" required error={showStep2Errors ? step2Errors.addressCity : undefined}>
+                  <input
+                    id="addressCity"
+                    type="text"
+                    autoComplete="address-level2"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.addressCity ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    value={form.addressCity}
+                    onChange={(e) => update("addressCity", e.target.value)}
+                    placeholder="Los Angeles"
+                  />
+                </Field>
+
+                <Field id="addressState" label="State" required error={showStep2Errors ? step2Errors.addressState : undefined}>
+                  <select
+                    id="addressState"
+                    autoComplete="address-level1"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.addressState ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    value={form.addressState}
+                    onChange={(e) => update("addressState", e.target.value)}
+                  >
+                    <option value="">Select state</option>
+                    {US_STATES.map((state) => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field id="dob" label="Date of Birth" required error={showStep2Errors ? step2Errors.dob : undefined}>
+                  <input
+                    id="dob"
+                    type="date"
+                    autoComplete="bday"
+                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.dob ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    value={form.dob}
+                    onChange={(e) => update("dob", e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                  />
+                </Field>
+
+                <Field id="ssn" label="Last 4 of SSN" required error={showStep2Errors ? step2Errors.ssn : undefined}>
+                  <div className="relative">
+                    <input
+                      id="ssn"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 pr-10 font-mono tracking-wider ${showStep2Errors && step2Errors.ssn ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                      value={form.ssn}
+                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="1234"
+                    />
+                    <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+                </Field>
               </div>
 
               <label className="flex items-start gap-3 cursor-pointer group">
