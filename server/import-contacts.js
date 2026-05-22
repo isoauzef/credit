@@ -98,7 +98,7 @@ async function main() {
         reviewLinks,
         reason: s.reason || null,
         quantity,
-        amount: quantity * 10000,
+        amount: quantity * 20000,
         stripeSessionId: s.stripeSessionId || null,
         paymentStatus: "pending",
         createdAt: s.submittedAt ? new Date(s.submittedAt) : new Date(),

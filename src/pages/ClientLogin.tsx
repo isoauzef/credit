@@ -59,7 +59,7 @@ export default function ClientLogin() {
             </div>
             <h1 className="text-2xl font-semibold text-slate-950">Client Dashboard</h1>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Sign in to view document status, bureau scores, dispute progress, and updates from Zack.
+              Sign in to view document status, bureau scores, dispute progress, and updates.
             </p>
           </div>
 

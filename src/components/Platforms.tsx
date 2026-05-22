@@ -15,7 +15,12 @@ function iconForBill(label: string) {
   return FileText;
 }
 
-export function Platforms() {
+interface PlatformsProps {
+  showBills?: boolean;
+  showCta?: boolean;
+}
+
+export function Platforms({ showBills: showBillsProp, showCta = false }: PlatformsProps = {}) {
   const cms = usePageContent<{
     badge?: string;
     heading?: string;
@@ -40,7 +45,7 @@ export function Platforms() {
   const billsHeading = cms?.billsHeading ?? "Bill payments we can add to your credit history";
   const ctaText = cms?.ctaText ?? "See If You Qualify";
   // Show bills grid unless explicitly disabled. Treat undefined (legacy data) as true.
-  const showBills = cms?.showBills !== false;
+  const showBills = showBillsProp ?? cms?.showBills !== false;
 
   const bills = cms?.platformList ?? [
     "Mobile & Landline Bills",
@@ -119,15 +124,17 @@ export function Platforms() {
         )}
 
         {/* CTA */}
-        <div className="text-center">
-          <a
-            href="/checkout"
-            className="group inline-flex items-center gap-3 bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-8 py-4 rounded-full text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-          >
-            {ctaText}
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </a>
-        </div>
+        {showCta && (
+          <div className="text-center">
+            <a
+              href="/checkout"
+              className="group inline-flex items-center gap-3 bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-8 py-4 rounded-full text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+            >
+              {ctaText}
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );

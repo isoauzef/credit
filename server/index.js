@@ -281,7 +281,7 @@ app.get("/api/stripe-publishable-key", (_req, res) => {
 app.get("/api/stripe-price", (_req, res) => {
   const settings = getStripeSettings();
   return res.json({
-    pricePerReview: Number(settings.stripe_price_per_review) || 10000,
+    pricePerReview: Number(settings.stripe_price_per_review) || 20000,
     tier2Threshold: Number(settings.stripe_price_tier2_threshold) || 10,
     tier2Price: Number(settings.stripe_price_tier2) || 30000,
     tier3Threshold: Number(settings.stripe_price_tier3_threshold) || 20,
@@ -489,7 +489,7 @@ app.post("/api/create-setup-intent", async (req, res) => {
 
   const safeQuantity = Math.max(1, Math.min(Number(quantity) || reviewLinks.length, 50));
   const settings = getStripeSettings();
-  const baseCents = Number(settings.stripe_price_per_review) || 10000;
+  const baseCents = Number(settings.stripe_price_per_review) || 20000;
   const t2Qty = Number(settings.stripe_price_tier2_threshold) || 10;
   const t2Price = Number(settings.stripe_price_tier2) || 30000;
   const t3Qty = Number(settings.stripe_price_tier3_threshold) || 20;
@@ -648,7 +648,7 @@ app.post("/api/finalize-checkout", async (req, res) => {
         const firstName = spaceIdx > 0 ? fullName.slice(0, spaceIdx) : (fullName || "-");
         const lastName = spaceIdx > 0 ? fullName.slice(spaceIdx + 1) : "-";
         const settings = getStripeSettings();
-        const baseCents = Number(settings.stripe_price_per_review) || 10000;
+        const baseCents = Number(settings.stripe_price_per_review) || 20000;
         const t2Qty = Number(settings.stripe_price_tier2_threshold) || 10;
         const t2Price = Number(settings.stripe_price_tier2) || 30000;
         const t3Qty = Number(settings.stripe_price_tier3_threshold) || 20;

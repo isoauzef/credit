@@ -90,7 +90,7 @@ function CheckoutHero() {
             <h1 className="text-white leading-tight">
               <span className="block text-4xl lg:text-5xl">{cms?.headingLine1 ?? "Remove Negative Google Reviews"}</span>
               <span className="block text-3xl lg:text-4xl text-cyan-200">
-                {cms?.headingLine2 ?? "Flat Fee of $400 Per Review"}
+                {cms?.headingLine2 ?? "Flat Fee of $200 Per Review"}
               </span>
             </h1>
 
@@ -331,7 +331,7 @@ function CheckoutFAQ() {
     },
     {
       q: "What if the review can't be removed? Do I still pay?",
-      a: "No. You only pay the $400 fee after the review has been successfully and permanently removed. If we can't get it removed, you owe nothing.",
+      a: "No. You only pay the $200 fee after the review has been successfully and permanently removed. If we can't get it removed, you owe nothing.",
     },
     {
       q: "Should I keep flagging the review while you're working on it?",
@@ -666,12 +666,12 @@ function FileDropzone({
   );
 }
 
-function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
-  const labels = ["Personal Info", "Documentation", "Authorization", "Add Card"];
+function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
+  const labels = ["Personal Info", "Authorization", "Add Card"];
   return (
     <div className="flex items-center justify-between gap-2 mb-8">
       {labels.map((label, i) => {
-        const n = (i + 1) as 1 | 2 | 3 | 4;
+        const n = (i + 1) as 1 | 2 | 3;
         const active = n === step;
         const done = n < step;
         return (
@@ -713,10 +713,7 @@ function SubmissionForm() {
   }>("checkout", "form");
 
   const [form, setForm] = useState<CreditRepairForm>({ ...blankCreditForm });
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [idDoc, setIdDoc] = useState<UploadedDoc | null>(null);
-  const [utilityDoc, setUtilityDoc] = useState<UploadedDoc | null>(null);
-  const [creditReportDoc, setCreditReportDoc] = useState<UploadedDoc | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const [signatureEmpty, setSignatureEmpty] = useState(true);
   const [pricingAgreed, setPricingAgreed] = useState(true);
@@ -883,11 +880,6 @@ function SubmissionForm() {
     return errs;
   }, [duplicateEmailMessage, emailCheck, form]);
 
-  const step2Errors = useMemo(() => {
-    // All uploads optional — keep memo for future hard validation hooks.
-    return {} as Record<string, string>;
-  }, [idDoc, utilityDoc, creditReportDoc]);
-
   const [showStep1Errors, setShowStep1Errors] = useState(false);
 
   const goNext = async () => {
@@ -921,25 +913,16 @@ function SubmissionForm() {
       setStep(2);
       return;
     }
-    if (step === 2) {
-      if (Object.keys(step2Errors).length > 0) {
-        setErrorMsg("Please upload both required documents.");
-        return;
-      }
-      setErrorMsg("");
-      setStep(3);
-      return;
-    }
   };
 
   const goBack = () => {
     setErrorMsg("");
     if (status === "card_step") {
       setStatus("idle");
-      setStep(3);
+      setStep(2);
       return;
     }
-    if (step > 1) setStep((s) => (s - 1) as 1 | 2 | 3 | 4);
+    if (step > 1) setStep((s) => (s - 1) as 1 | 2 | 3);
   };
 
   const authLetterText = useMemo(() => {
@@ -979,7 +962,7 @@ function SubmissionForm() {
   const handleSubmitForReview = async (e: FormEvent) => {
     e.preventDefault();
     if (status !== "idle" && status !== "error") return;
-    if (Object.keys(step1Errors).length || Object.keys(step2Errors).length) {
+    if (Object.keys(step1Errors).length) {
       setErrorMsg("Please complete all previous steps.");
       return;
     }
@@ -1006,9 +989,9 @@ function SubmissionForm() {
           address: form.address.trim(),
           dob: form.dob,
           ssn: form.ssn.replace(/\D/g, ""),
-          idDocToken: idDoc?.token,
-          utilityDocToken: utilityDoc?.token,
-          creditReportDocToken: creditReportDoc?.token,
+          idDocToken: null,
+          utilityDocToken: null,
+          creditReportDocToken: null,
           signatureDataUrl,
           authLetterSnapshot: authLetterText,
         }),
@@ -1020,7 +1003,7 @@ function SubmissionForm() {
       setClientSecret(data.clientSecret);
       setSetupIntentId(data.setupIntentId);
       setStatus("card_step");
-      setStep(4);
+      setStep(3);
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Submission failed.");
@@ -1042,7 +1025,7 @@ function SubmissionForm() {
       /* non-blocking */
     }
     if (!purchaseEventTrackedRef.current) {
-      trackFacebookPurchase({ value: 100, currency: "USD" });
+      trackFacebookPurchase({ value: 200, currency: "USD" });
       purchaseEventTrackedRef.current = true;
     }
     setStatus("success");
@@ -1262,48 +1245,8 @@ function SubmissionForm() {
             </div>
           )}
 
-          {/* ── Step 2: Documentation ── */}
+          {/* ── Step 2: Authorization & Signature ── */}
           {step === 2 && (
-            <div className="space-y-6">
-              <p className="text-sm text-gray-600">
-                Uploading these verifies your identity. While optional for sign-up, they are required to start your
-                case. Don't have them handy? Skip them now and upload them later in your client dashboard.
-              </p>
-
-              <FileDropzone
-                label="Government-Issued Photo ID"
-                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
-                doc={idDoc}
-                onChange={setIdDoc}
-                hint="Driver's license, passport, etc."
-              />
-
-              <FileDropzone
-                label="Utility Bill"
-                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
-                doc={utilityDoc}
-                onChange={setUtilityDoc}
-                hint="Within the last 90 days, showing your address"
-              />
-
-              <FileDropzone
-                label="Credit Report"
-                accept="image/jpeg,image/png,image/heic,image/heif,application/pdf,.heic,.heif"
-                doc={creditReportDoc}
-                onChange={setCreditReportDoc}
-                hint="From Equifax, Experian, TransUnion, or annualcreditreport.com"
-              />
-
-              <div className="flex items-start gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">
-                <Shield className="w-4 h-4 text-[#1e5a8a] flex-shrink-0 mt-0.5" />
-                Documents are stored on a private server and never publicly accessible. Only the assigned case agent can
-                view them through the authenticated admin portal.
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Authorization & Signature ── */}
-          {step === 3 && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
                 Please review the credit-bureau authorization letter below. By signing, you authorize CreditRemovers to
@@ -1337,16 +1280,15 @@ function SubmissionForm() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1e5a8a] focus:ring-[#1e5a8a]/30"
                 />
                 <span className="text-sm text-gray-600 leading-relaxed">
-                  I agree to Credit Removers pricing. <strong>$100 per item</strong> removed, paid only upon successful
-                  removals.
+                  I agree to Credit Removers pricing. <strong>200$ one time fee</strong>.
                   <span className="text-red-400 ml-0.5">*</span>
                 </span>
               </label>
             </div>
           )}
 
-          {/* ── Step 4: Save Card ── */}
-          {step === 4 && (status === "card_step" || status === "saving_card") && (
+          {/* ── Step 3: Save Card ── */}
+          {step === 3 && (status === "card_step" || status === "saving_card") && (
             <div className="space-y-5">
               <p className="text-sm text-gray-600">
                 Finally, save a card on file. <strong>No charge is made today</strong> — your card is only charged once we confirm the removals.
@@ -1381,7 +1323,7 @@ function SubmissionForm() {
           )}
 
           {/* ── Navigation buttons ── */}
-          {step !== 4 && (
+          {step !== 3 && (
             <div className="mt-8 flex items-center justify-between gap-3">
               <button
                 type="button"
@@ -1392,7 +1334,7 @@ function SubmissionForm() {
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
 
-              {step < 3 ? (
+              {step < 2 ? (
                 <button
                   type="button"
                   onClick={goNext}
@@ -1421,7 +1363,7 @@ function SubmissionForm() {
             </div>
           )}
 
-          {step === 4 && status !== "saving_card" && (
+          {step === 3 && status !== "saving_card" && (
             <div className="mt-6">
               <button
                 type="button"
@@ -1678,7 +1620,7 @@ export default function ReviewRemovalCheckout() {
       <CheckoutHero />
       <KPIMobile />
       <StatsBar />
-      <Platforms />
+      <Platforms showBills showCta={false} />
       <ProcessSteps />
       <CheckoutFAQ />
       <SubmissionForm />

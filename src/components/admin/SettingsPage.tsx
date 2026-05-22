@@ -56,7 +56,7 @@ export default function SettingsPage() {
       desc: "Payment gateway keys and mode settings.",
       keys: [
         { key: "stripe_mode", label: "Mode", type: "select", options: ["test", "live"] },
-        { key: "stripe_price_per_review", label: "Price Per Review (cents)", hint: "e.g. 10000 = $100" },
+        { key: "stripe_price_per_review", label: "Price Per Review (cents)", hint: "e.g. 20000 = $200" },
         { key: "stripe_price_tier2_threshold", label: "Tier 2 Threshold (quantity)", hint: "e.g. 10 — applies to 10+ reviews" },
         { key: "stripe_price_tier2", label: "Tier 2 Price Per Review (cents)", hint: "e.g. 30000 = $300" },
         { key: "stripe_price_tier3_threshold", label: "Tier 3 Threshold (quantity)", hint: "e.g. 20 — applies to 20+ reviews" },
