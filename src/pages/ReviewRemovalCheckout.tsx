@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
+import { Platforms } from "../components/Platforms";
 import SignatureCanvas from "../components/SignatureCanvas";
 import svgPaths from "../imports/svg-6ltl2tuh8w";
 import emblemBlue from "../assets/df36f4e1f0ac313fd0c673284d92e4bd4202491a.png";
@@ -1677,6 +1678,7 @@ export default function ReviewRemovalCheckout() {
       <CheckoutHero />
       <KPIMobile />
       <StatsBar />
+      <Platforms />
       <ProcessSteps />
       <CheckoutFAQ />
       <SubmissionForm />
