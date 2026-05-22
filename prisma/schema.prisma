@@ -61,7 +61,7 @@ model CheckoutSubmission {
   address               String?   @db.VarChar(500)
   dob                   String?   @db.VarChar(20) // YYYY-MM-DD
   ssnLast4              String?   @db.VarChar(4)
-  ssnEncrypted          String?   @db.Text // base64(KMS or AES-256-GCM ciphertext)
+  ssnEncrypted          String?   @db.Text // legacy full-SSN ciphertext; new checkout stores last 4 only
   // Document uploads (Step 2) — relative paths under private-uploads/
   idDocPath             String?   @db.VarChar(500)
   utilityDocPath        String?   @db.VarChar(500)

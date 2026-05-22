@@ -61,7 +61,7 @@ export function Platforms({ showBills: showBillsProp, showCta = false }: Platfor
   return (
     <section
       id="services"
-      className="relative py-16 lg:py-24 bg-white border-t border-gray-100 scroll-mt-32 overflow-hidden"
+      className="relative py-12 lg:py-16 bg-white border-t border-gray-100 scroll-mt-32 overflow-hidden"
     >
       {/* Subtle background accents */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/40 pointer-events-none" />
@@ -99,7 +99,7 @@ export function Platforms({ showBills: showBillsProp, showCta = false }: Platfor
 
         {/* Bills grid */}
         {showBills && (
-          <div className="mb-10">
+          <div>
             <h3 className="text-center text-gray-900 text-xl lg:text-2xl mb-8">{billsHeading}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-5">
               {bills.map((bill, index) => {

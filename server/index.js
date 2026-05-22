@@ -14,7 +14,6 @@ const { searchPlaces } = require("./services/google-places");
 const adminRoutes = require("./routes/admin");
 const secureUploadsRoutes = require("./routes/secure-uploads");
 const clientDashboardRoutes = require("./routes/client-dashboard");
-const { encryptPII, decryptPII, isKmsConfigured } = require("./helpers/encryption");
 const {
   buildPortalUrls,
   ensureClientDashboardAccountForSubmission,
@@ -346,7 +345,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   if (!address || String(address).trim().length < 5) errors.push("address");
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(String(dob))) errors.push("dob");
   const ssnDigits = String(ssn || "").replace(/\D/g, "");
-  if (ssnDigits.length !== 9) errors.push("ssn");
+  if (ssnDigits.length !== 4) errors.push("ssn");
   const tokenRe = /^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i;
   if (idDocToken && !tokenRe.test(String(idDocToken))) errors.push("idDocToken");
   if (utilityDocToken && !tokenRe.test(String(utilityDocToken))) errors.push("utilityDocToken");
@@ -391,16 +390,6 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   const fullName = `${String(firstName).trim()} ${String(lastName).trim()}`.trim();
   let customer = null;
   let setupIntent = null;
-  let ssnEncrypted = null;
-
-  try {
-    // Encrypt full SSN (last 4 stored in clear for admin reference)
-    ssnEncrypted = await encryptPII(ssnDigits);
-  } catch (err) {
-    console.error("[credit-repair] SSN encryption failed:", err.message);
-    return res.status(500).json({ message: "Could not securely store sensitive information." });
-  }
-
   try {
     const settings = getStripeSettings();
     const mode = settings.stripe_mode || "test";
@@ -438,8 +427,8 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
         phone: String(phone).slice(0, 50),
         address: String(address).slice(0, 500),
         dob: String(dob),
-        ssnLast4: ssnDigits.slice(-4),
-        ssnEncrypted,
+        ssnLast4: ssnDigits,
+        ssnEncrypted: null,
         idDocPath: idDocToken ? String(idDocToken) : null,
         utilityDocPath: utilityDocToken ? String(utilityDocToken) : null,
         creditReportDocPath: creditReportDocToken ? String(creditReportDocToken) : null,

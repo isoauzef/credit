@@ -45,7 +45,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-semibold text-slate-900">1. Information We Collect</h2>
             <p>When you request our credit repair services, we may collect:</p>
             <ul className="list-disc space-y-2 pl-6 text-slate-600">
-              <li>Identity information: your full legal name, date of birth, current and previous addresses, and the last four digits or full Social Security Number where required to authenticate you with the credit bureaus</li>
+              <li>Identity information: your full legal name, date of birth, current and previous addresses, and the last four digits of your Social Security Number where required to authenticate you with the credit bureaus</li>
               <li>Contact details: email address and phone number</li>
               <li>Credit information: copies of your Equifax, Experian, and TransUnion credit reports, individual tradeline details, account numbers (typically masked), balances, and dispute history</li>
               <li>Payment information: billing details processed through our payment processor (we do not store full card numbers on our servers)</li>

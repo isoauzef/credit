@@ -447,14 +447,6 @@ type EmailAvailability = {
   message?: string;
 };
 
-function maskSSN(raw: string): string {
-  // Display SSN as ***-**-#### when more than 4 digits typed (only when not focused later)
-  const digits = raw.replace(/\D/g, "").slice(0, 9);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 5) return digits.slice(0, 3) + "-" + digits.slice(3);
-  return digits.slice(0, 3) + "-" + digits.slice(3, 5) + "-" + digits.slice(5);
-}
-
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 10);
   if (digits.length === 0) return "";
@@ -828,7 +820,7 @@ function SubmissionForm() {
     phone: "Phone",
     address: "Home Address",
     dob: "Date of Birth",
-    ssn: "Social Security Number",
+    ssn: "Last 4 of SSN",
   };
 
   const duplicateEmailMessage =
@@ -876,7 +868,7 @@ function SubmissionForm() {
     else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
     else if (form.address.trim().length < 5) errs.address = "Enter your full street address";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
-    if (form.ssn.replace(/\D/g, "").length !== 9) errs.ssn = "Enter your 9-digit SSN";
+    if (form.ssn.replace(/\D/g, "").length !== 4) errs.ssn = "Enter the last 4 digits of your SSN";
     return errs;
   }, [duplicateEmailMessage, emailCheck, form]);
 
@@ -1040,7 +1032,7 @@ function SubmissionForm() {
 
   if (status === "success") {
     return (
-      <section id="submit" className="py-16 lg:py-24 bg-gradient-to-b from-gray-50 to-white">
+      <section id="submit" className="py-12 lg:py-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle2 className="w-9 h-9 text-green-600" />
@@ -1122,7 +1114,7 @@ function SubmissionForm() {
   }
 
   return (
-    <section id="submit" className="py-16 lg:py-24 bg-gradient-to-b from-gray-50 to-white">
+    <section id="submit" className="py-12 lg:py-16 bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
           <h2 className="text-3xl lg:text-4xl font-semibold text-gray-900 mb-3">
@@ -1221,7 +1213,7 @@ function SubmissionForm() {
                     max={new Date().toISOString().slice(0, 10)}
                   />
                 </Field>
-                <Field id="ssn" label="Social Security Number" required hint="encrypted" error={showStep1Errors ? step1Errors.ssn : undefined}>
+                <Field id="ssn" label="Last 4 of SSN" required error={showStep1Errors ? step1Errors.ssn : undefined}>
                   <div className="relative">
                     <input
                       id="ssn"
@@ -1229,9 +1221,9 @@ function SubmissionForm() {
                       inputMode="numeric"
                       autoComplete="off"
                       className={`${inputClass} pr-10 font-mono tracking-wider ${showStep1Errors && step1Errors.ssn ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                      value={maskSSN(form.ssn)}
-                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 9))}
-                      placeholder="123-45-6789"
+                      value={form.ssn}
+                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      placeholder="1234"
                     />
                     <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
@@ -1240,7 +1232,7 @@ function SubmissionForm() {
 
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">
                 <Shield className="w-4 h-4 text-[#1e5a8a] flex-shrink-0" />
-                Your SSN is encrypted with envelope encryption before being stored. Only authorized staff can decrypt it.
+                Only the last 4 digits of your SSN are stored for identity verification.
               </div>
             </div>
           )}
@@ -1280,7 +1272,7 @@ function SubmissionForm() {
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#1e5a8a] focus:ring-[#1e5a8a]/30"
                 />
                 <span className="text-sm text-gray-600 leading-relaxed">
-                  I agree to Credit Removers pricing. <strong>200$ one time fee</strong>.
+                  I agree to Credit Removers pricing: <strong>$200 one time fee charged only after successful removals.</strong>
                   <span className="text-red-400 ml-0.5">*</span>
                 </span>
               </label>

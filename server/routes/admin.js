@@ -153,24 +153,6 @@ router.get("/checkout-submissions", async (_req, res) => {
   }
 });
 
-// Reveal decrypted SSN (admin-only). Audit log this action.
-const { decryptPII } = require("../helpers/encryption");
-router.get("/checkout-submissions/:id/ssn", async (req, res) => {
-  try {
-    const sub = await prisma.checkoutSubmission.findUnique({
-      where: { id: Number(req.params.id) },
-      select: { ssnEncrypted: true },
-    });
-    if (!sub || !sub.ssnEncrypted) return res.status(404).json({ message: "Not found" });
-    const plain = await decryptPII(sub.ssnEncrypted);
-    console.log(`[admin] SSN revealed: submission=${req.params.id} admin=${req.adminUser?.email}`);
-    return res.json({ ssn: plain });
-  } catch (err) {
-    console.error("[admin] ssn decrypt failed", err);
-    return res.status(500).json({ message: "Decryption failed" });
-  }
-});
-
 // Fetch signature image (admin-only)
 router.get("/checkout-submissions/:id/signature", async (req, res) => {
   try {

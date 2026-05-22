@@ -2,7 +2,7 @@ import { FormEvent, Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAdminApi, useAdminAuth, type CheckoutSubmission } from "../../hooks/useAdmin";
-import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, Eye, EyeOff, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle, Newspaper } from "lucide-react";
+import { Trash2, RefreshCw, Banknote, ExternalLink, ChevronDown, Star, FileText, Image as ImageIcon, KeyRound, Upload, Save, PlusCircle, Newspaper } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
@@ -478,28 +478,10 @@ export default function CheckoutSubmissions() {
   const { token } = useAdminAuth();
   const [capturing, setCapturing] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [revealedSsn, setRevealedSsn] = useState<Record<number, string>>({});
   const [signatures, setSignatures] = useState<Record<number, { signatureDataUrl: string | null; signedAt: string | null; authLetterSnapshot: string | null }>>({});
   const [clientDashboards, setClientDashboards] = useState<Record<number, ClientDashboardAdminResponse>>({});
   const [dashboardPasswords, setDashboardPasswords] = useState<Record<number, string>>({});
   const [dashboardLoading, setDashboardLoading] = useState<Record<number, boolean>>({});
-
-  const revealSSN = async (id: number) => {
-    if (revealedSsn[id]) {
-      setRevealedSsn((p) => { const c = { ...p }; delete c[id]; return c; });
-      return;
-    }
-    try {
-      const resp = await fetch(`/api/admin/checkout-submissions/${id}/ssn`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!resp.ok) throw new Error("Failed to decrypt SSN");
-      const data = await resp.json();
-      setRevealedSsn((p) => ({ ...p, [id]: data.ssn }));
-    } catch (e: any) {
-      toast.error(e.message || "Could not reveal SSN");
-    }
-  };
 
   const loadSignature = async (id: number) => {
     if (signatures[id]) return;
@@ -919,22 +901,8 @@ export default function CheckoutSubmissions() {
                                 )}
                                 {s.ssnLast4 && (
                                   <div>
-                                    <p className="text-slate-500 text-xs mb-1">SSN</p>
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-slate-200 font-mono">
-                                        {revealedSsn[s.id]
-                                          ? `${revealedSsn[s.id].slice(0, 3)}-${revealedSsn[s.id].slice(3, 5)}-${revealedSsn[s.id].slice(5)}`
-                                          : `***-**-${s.ssnLast4}`}
-                                      </p>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); revealSSN(s.id); }}
-                                        className="rounded p-1 text-slate-400 hover:bg-slate-700"
-                                        title={revealedSsn[s.id] ? "Hide SSN" : "Reveal SSN"}
-                                      >
-                                        {revealedSsn[s.id] ? <EyeOff size={14} /> : <Eye size={14} />}
-                                      </button>
-                                    </div>
+                                    <p className="text-slate-500 text-xs mb-1">SSN Last 4</p>
+                                    <p className="text-slate-200 font-mono">***-**-{s.ssnLast4}</p>
                                   </div>
                                 )}
                               </div>
