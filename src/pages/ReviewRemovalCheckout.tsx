@@ -1355,13 +1355,13 @@ function SubmissionForm() {
                 </Field>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                 <Field id="dob" label="Date of Birth" required error={showStep2Errors ? step2Errors.dob : undefined}>
                   <input
                     id="dob"
                     type="date"
                     autoComplete="bday"
-                    className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.dob ? "border-red-300 ring-2 ring-red-100" : ""}`}
+                    className={`${inputClass} checkout-date-input min-w-0 max-w-full appearance-none rounded-full border-[#0f3d4a]/80 bg-white px-5 ${showStep2Errors && step2Errors.dob ? "border-red-300 ring-2 ring-red-100" : ""}`}
                     value={form.dob}
                     onChange={(e) => update("dob", e.target.value)}
                     max={new Date().toISOString().slice(0, 10)}
@@ -1682,7 +1682,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <label htmlFor={id} className="block text-sm text-gray-700 font-medium mb-1.5">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
