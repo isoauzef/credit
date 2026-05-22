@@ -338,7 +338,7 @@ function validateCreditRepairCheckoutPayload(body = {}) {
   const addressValue = String(address || "").trim();
   const dobValue = String(dob || "").trim();
   const ssnDigits = String(ssn || "").replace(/\D/g, "");
-  const signatureValue = String(signatureDataUrl || "");
+  const signatureValue = signatureDataUrl ? String(signatureDataUrl) : null;
   const errors = [];
 
   if (first.length < 1) errors.push("firstName");
@@ -346,6 +346,8 @@ function validateCreditRepairCheckoutPayload(body = {}) {
   if (!normalizedEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) errors.push("email");
   if (phoneValue.replace(/\D/g, "").length < 7) errors.push("phone");
   if (addressValue.length < 5) errors.push("address");
+  else if (!/^\d/.test(addressValue)) errors.push("address");
+  else if (!/[A-Za-z]/.test(addressValue)) errors.push("address");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dobValue)) errors.push("dob");
   if (ssnDigits.length !== 4) errors.push("ssn");
 
@@ -358,7 +360,7 @@ function validateCreditRepairCheckoutPayload(body = {}) {
   if (docTokens.idDocToken && !tokenRe.test(docTokens.idDocToken)) errors.push("idDocToken");
   if (docTokens.utilityDocToken && !tokenRe.test(docTokens.utilityDocToken)) errors.push("utilityDocToken");
   if (docTokens.creditReportDocToken && !tokenRe.test(docTokens.creditReportDocToken)) errors.push("creditReportDocToken");
-  if (!signatureValue || !/^data:image\/png;base64,/.test(signatureValue)) errors.push("signature");
+  if (signatureValue && !/^data:image\/png;base64,/.test(signatureValue)) errors.push("signature");
 
   if (errors.length) {
     return { ok: false, status: 400, message: "Validation failed", fields: errors };
@@ -373,7 +375,7 @@ function validateCreditRepairCheckoutPayload(body = {}) {
     }
   }
 
-  if (signatureValue.length > 350_000) {
+  if (signatureValue && signatureValue.length > 350_000) {
     return { ok: false, status: 413, message: "Signature image too large." };
   }
 
@@ -416,7 +418,10 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   if (!lastName || String(lastName).trim().length < 1) errors.push("lastName");
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) errors.push("email");
   if (!phone || String(phone).replace(/\D/g, "").length < 7) errors.push("phone");
-  if (!address || String(address).trim().length < 5) errors.push("address");
+  const addressValue = String(address || "").trim();
+  if (addressValue.length < 5) errors.push("address");
+  else if (!/^\d/.test(addressValue)) errors.push("address");
+  else if (!/[A-Za-z]/.test(addressValue)) errors.push("address");
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(String(dob))) errors.push("dob");
   const ssnDigits = String(ssn || "").replace(/\D/g, "");
   if (ssnDigits.length !== 4) errors.push("ssn");
@@ -424,7 +429,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   if (idDocToken && !tokenRe.test(String(idDocToken))) errors.push("idDocToken");
   if (utilityDocToken && !tokenRe.test(String(utilityDocToken))) errors.push("utilityDocToken");
   if (creditReportDocToken && !tokenRe.test(String(creditReportDocToken))) errors.push("creditReportDocToken");
-  if (!signatureDataUrl || !/^data:image\/png;base64,/.test(String(signatureDataUrl))) errors.push("signature");
+  if (signatureDataUrl && !/^data:image\/png;base64,/.test(String(signatureDataUrl))) errors.push("signature");
   if (errors.length) {
     return res.status(400).json({ message: "Validation failed", fields: errors });
   }
@@ -440,7 +445,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   }
 
   // ── Limit signature size to prevent DB abuse (~256KB for PNG data URL) ──
-  if (String(signatureDataUrl).length > 350_000) {
+  if (signatureDataUrl && String(signatureDataUrl).length > 350_000) {
     return res.status(413).json({ message: "Signature image too large." });
   }
 
@@ -705,7 +710,7 @@ app.post("/api/finalize-checkout", async (req, res) => {
           utilityDocPath: intake.utilityDocPath,
           creditReportDocPath: intake.creditReportDocPath,
           signatureDataUrl: intake.signatureDataUrl,
-          signedAt: new Date(),
+          signedAt: intake.signatureDataUrl ? new Date() : null,
           authLetterSnapshot: intake.authLetterSnapshot,
           quantity: 1,
           amount: 0,

@@ -200,8 +200,6 @@ function SubmissionForm() {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [idDoc, setIdDoc] = useState<UploadedDoc | null>(null);
   const [utilityDoc, setUtilityDoc] = useState<UploadedDoc | null>(null);
-  const [signatureDataUrl, setSignatureDataUrl] = useState("");
-  const [signatureEmpty, setSignatureEmpty] = useState(true);
   const [agreed, setAgreed] = useState(false);
 
   const [status, setStatus] = useState<"idle" | "submitting" | "card_step" | "saving_card" | "success" | "error">("idle");
@@ -239,7 +237,10 @@ function SubmissionForm() {
     if (!form.lastName.trim()) errs.lastName = "Required";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = "Enter a valid email";
     if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
-    if (form.address.trim().length < 5) errs.address = "Enter your full street address";
+    if (!form.address.trim()) errs.address = "Required";
+    else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
+    else if (!/[A-Za-z]/.test(form.address.trim())) errs.address = "Address must include a street name";
+    else if (form.address.trim().length < 5) errs.address = "Enter your full street address";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
     if (form.ssn.replace(/\D/g, "").length !== 9) errs.ssn = "Enter your 9-digit SSN";
     return errs;
@@ -329,7 +330,7 @@ function SubmissionForm() {
     idDocToken: idDoc?.token,
     utilityDocToken: utilityDoc?.token,
     creditReportDocToken: null,
-    signatureDataUrl,
+    signatureDataUrl: null,
     authLetterSnapshot: authLetterText,
   });
 
@@ -338,10 +339,6 @@ function SubmissionForm() {
     if (status !== "idle" && status !== "error") return;
     if (Object.keys(step1Errors).length || Object.keys(step2Errors).length) {
       setErrorMsg("Please complete all previous steps.");
-      return;
-    }
-    if (signatureEmpty || !signatureDataUrl) {
-      setErrorMsg("Please draw your signature.");
       return;
     }
     if (!agreed) {
@@ -560,31 +557,13 @@ function SubmissionForm() {
             </div>
           )}
 
-          {/* ── Step 3: Authorization & Signature ── */}
+          {/* ── Step 3: Authorization ── */}
           {step === 3 && (
             <div className="space-y-5">
-              <p className="text-sm text-gray-600">
-                Please review the credit-bureau authorization letter below. By signing, you authorize CreditRemovers to
-                act on your behalf with Equifax, Experian, and TransUnion.
-              </p>
-
-              <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
                 <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans leading-relaxed">
 {authLetterText}
                 </pre>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 font-medium mb-1.5">
-                  Your Signature <span className="text-red-400 ml-0.5">*</span>
-                </label>
-                <SignatureCanvas
-                  height={170}
-                  onChange={(dataUrl, empty) => {
-                    setSignatureDataUrl(dataUrl);
-                    setSignatureEmpty(empty);
-                  }}
-                />
               </div>
 
               <label className="flex items-start gap-3 cursor-pointer group">

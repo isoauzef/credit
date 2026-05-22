@@ -31,7 +31,6 @@ import {
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { Platforms } from "../components/Platforms";
-import SignatureCanvas from "../components/SignatureCanvas";
 import svgPaths from "../imports/svg-6ltl2tuh8w";
 import emblemBlue from "../assets/df36f4e1f0ac313fd0c673284d92e4bd4202491a.png";
 import emblemDark from "../assets/cc179f68e1f2cdec4f23e00b5ae695644333bf02.png";
@@ -706,8 +705,6 @@ function SubmissionForm() {
 
   const [form, setForm] = useState<CreditRepairForm>({ ...blankCreditForm });
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [signatureDataUrl, setSignatureDataUrl] = useState("");
-  const [signatureEmpty, setSignatureEmpty] = useState(true);
   const [pricingAgreed, setPricingAgreed] = useState(true);
 
   const [status, setStatus] = useState<"idle" | "submitting" | "card_step" | "saving_card" | "success" | "error">("idle");
@@ -866,6 +863,7 @@ function SubmissionForm() {
     if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
     if (!form.address.trim()) errs.address = "Required";
     else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
+    else if (!/[A-Za-z]/.test(form.address.trim())) errs.address = "Address must include a street name";
     else if (form.address.trim().length < 5) errs.address = "Enter your full street address";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
     if (form.ssn.replace(/\D/g, "").length !== 4) errs.ssn = "Enter the last 4 digits of your SSN";
@@ -962,7 +960,7 @@ function SubmissionForm() {
     idDocToken: null,
     utilityDocToken: null,
     creditReportDocToken: null,
-    signatureDataUrl,
+    signatureDataUrl: null,
     authLetterSnapshot: authLetterText,
   });
 
@@ -971,10 +969,6 @@ function SubmissionForm() {
     if (status !== "idle" && status !== "error") return;
     if (Object.keys(step1Errors).length) {
       setErrorMsg("Please complete all previous steps.");
-      return;
-    }
-    if (signatureEmpty || !signatureDataUrl) {
-      setErrorMsg("Please draw your signature.");
       return;
     }
     if (!pricingAgreed) {
@@ -1245,31 +1239,13 @@ function SubmissionForm() {
             </div>
           )}
 
-          {/* ── Step 2: Authorization & Signature ── */}
+          {/* ── Step 2: Authorization ── */}
           {step === 2 && (
             <div className="space-y-5">
-              <p className="text-sm text-gray-600">
-                Please review the credit-bureau authorization letter below. By signing, you authorize CreditRemovers to
-                act on your behalf with Equifax, Experian, and TransUnion.
-              </p>
-
-              <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
                 <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans leading-relaxed">
 {authLetterText}
                 </pre>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-700 font-medium mb-1.5">
-                  Your Signature <span className="text-red-400 ml-0.5">*</span>
-                </label>
-                <SignatureCanvas
-                  height={170}
-                  onChange={(dataUrl, empty) => {
-                    setSignatureDataUrl(dataUrl);
-                    setSignatureEmpty(empty);
-                  }}
-                />
               </div>
 
               <label className="flex items-start gap-3 cursor-pointer group">
