@@ -344,7 +344,8 @@ function validateCreditRepairCheckoutPayload(body = {}) {
   if (first.length < 1) errors.push("firstName");
   if (last.length < 1) errors.push("lastName");
   if (!normalizedEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) errors.push("email");
-  if (phoneValue.replace(/\D/g, "").length < 7) errors.push("phone");
+  const phoneDigits = phoneValue.replace(/\D/g, "");
+  if (phoneDigits.length !== 10 || phoneDigits.startsWith("1")) errors.push("phone");
   if (addressValue.length < 5) errors.push("address");
   else if (!/^\d/.test(addressValue)) errors.push("address");
   else if (!/[A-Za-z]/.test(addressValue)) errors.push("address");
@@ -417,7 +418,8 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   if (!firstName || String(firstName).trim().length < 1) errors.push("firstName");
   if (!lastName || String(lastName).trim().length < 1) errors.push("lastName");
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) errors.push("email");
-  if (!phone || String(phone).replace(/\D/g, "").length < 7) errors.push("phone");
+  const phoneDigits = String(phone || "").replace(/\D/g, "");
+  if (phoneDigits.length !== 10 || phoneDigits.startsWith("1")) errors.push("phone");
   const addressValue = String(address || "").trim();
   if (addressValue.length < 5) errors.push("address");
   else if (!/^\d/.test(addressValue)) errors.push("address");

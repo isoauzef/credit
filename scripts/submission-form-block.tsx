@@ -36,8 +36,14 @@ function maskSSN(raw: string): string {
   return digits.slice(0, 3) + "-" + digits.slice(3, 5) + "-" + digits.slice(5);
 }
 
+function getCheckoutPhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("1")) digits = digits.slice(1);
+  return digits.slice(0, 10);
+}
+
 function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  const digits = getCheckoutPhoneDigits(raw);
   if (digits.length === 0) return "";
   if (digits.length <= 3) return `(${digits}`;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
@@ -236,7 +242,9 @@ function SubmissionForm() {
     if (!form.firstName.trim()) errs.firstName = "Required";
     if (!form.lastName.trim()) errs.lastName = "Required";
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) errs.email = "Enter a valid email";
-    if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) errs.phone = "Enter a 10-digit phone number";
+    else if (phoneDigits.startsWith("1")) errs.phone = "Phone number cannot start with 1";
     if (!form.address.trim()) errs.address = "Required";
     else if (!/^\d/.test(form.address.trim())) errs.address = "Address must start with a street number (e.g. 123 Main St)";
     else if (!/[A-Za-z]/.test(form.address.trim())) errs.address = "Address must include a street name";

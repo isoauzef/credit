@@ -507,8 +507,14 @@ type EmailAvailability = {
   message?: string;
 };
 
+function getCheckoutPhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("1")) digits = digits.slice(1);
+  return digits.slice(0, 10);
+}
+
 function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  const digits = getCheckoutPhoneDigits(raw);
   if (digits.length === 0) return "";
   if (digits.length <= 3) return `(${digits}`;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
@@ -935,7 +941,9 @@ function SubmissionForm() {
     else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "checking") errs.email = "Checking email...";
     else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "exists") errs.email = emailCheck.message || duplicateEmailMessage;
     else if (emailCheck.checkedEmail === normalizedEmail && emailCheck.status === "error") errs.email = emailCheck.message || "Could not check this email right now.";
-    if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a 10-digit phone number";
+    const phoneDigits = form.phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) errs.phone = "Enter a 10-digit phone number";
+    else if (phoneDigits.startsWith("1")) errs.phone = "Phone number cannot start with 1";
     return errs;
   }, [duplicateEmailMessage, emailCheck, form.email, form.firstName, form.lastName, form.phone]);
 
