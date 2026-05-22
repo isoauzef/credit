@@ -455,7 +455,7 @@ export default function ClientDashboard() {
                 </h2>
                 {!dashboard.documents.readyToStart && (
                   <p className="mt-1 text-sm">
-                    Upload any bills you have paid on time for example mobile phone bills, utility bills, cable tv bills, car insurance payments and upload a picture of id
+                    Upload any bills you have paid on time, such as; mobile phone bills, utility bills, cable tv bills, car insurance payments & upload a picture of your ID.
                   </p>
                 )}
               </div>
@@ -537,15 +537,18 @@ export default function ClientDashboard() {
                 </div>
               ) : (
                 <div className="mt-4 grid gap-3">
-                  {positiveHistory.map((report) => (
-                    <article key={report.bureau} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="font-semibold text-slate-900">{report.name}</h3>
-                        <span className="shrink-0 text-xs text-slate-400">{formatDate(report.dateGenerated || report.scoreDate)}</span>
-                      </div>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{report.positivesNote}</p>
-                    </article>
-                  ))}
+                  {positiveHistory.map((report) => {
+                    const positiveDate = report.dateGenerated || report.scoreDate;
+                    return (
+                      <article key={report.bureau} className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="font-semibold text-slate-900">{report.name}</h3>
+                          {positiveDate && <span className="shrink-0 text-xs text-slate-400">{formatDate(positiveDate)}</span>}
+                        </div>
+                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{report.positivesNote}</p>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>
