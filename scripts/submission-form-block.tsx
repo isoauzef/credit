@@ -29,7 +29,6 @@ interface UploadedDoc {
 }
 
 function maskSSN(raw: string): string {
-  // Display SSN as ***-**-#### when more than 4 digits typed (only when not focused later)
   const digits = raw.replace(/\D/g, "").slice(0, 9);
   if (digits.length <= 3) return digits;
   if (digits.length <= 5) return digits.slice(0, 3) + "-" + digits.slice(3);
@@ -299,7 +298,7 @@ function SubmissionForm() {
     const dobDisplay = form.dob
       ? new Date(form.dob + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : "[Your DOB]";
-    const ssnDisplay = form.ssn ? `***-**-${form.ssn.replace(/\D/g, "").slice(-4)}` : "[Last 4 of SSN]";
+    const ssnDisplay = form.ssn ? `***-**-${form.ssn.replace(/\D/g, "").slice(-4)}` : "[SSN]";
 
     return [
       todayStr,

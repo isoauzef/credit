@@ -19,6 +19,7 @@ const {
   ensureClientDashboardAccountForSubmission,
 } = require("./helpers/clientDashboard");
 const { serializeBlogPost } = require("./helpers/blog");
+const { encryptPII } = require("./helpers/encryption");
 
 const app = express();
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3001);
@@ -350,7 +351,7 @@ function validateCreditRepairCheckoutPayload(body = {}) {
   else if (!/^\d/.test(addressValue)) errors.push("address");
   else if (!/[A-Za-z]/.test(addressValue)) errors.push("address");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dobValue)) errors.push("dob");
-  if (ssnDigits.length !== 4) errors.push("ssn");
+  if (ssnDigits.length !== 9) errors.push("ssn");
 
   const tokenRe = /^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i;
   const docTokens = {
@@ -391,7 +392,8 @@ function validateCreditRepairCheckoutPayload(body = {}) {
       phone: phoneValue,
       address: addressValue,
       dob: dobValue,
-      ssnLast4: ssnDigits,
+      ssnDigits,
+      ssnLast4: ssnDigits.slice(-4),
       idDocPath: docTokens.idDocToken,
       utilityDocPath: docTokens.utilityDocToken,
       creditReportDocPath: docTokens.creditReportDocToken,
@@ -426,7 +428,7 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
   else if (!/[A-Za-z]/.test(addressValue)) errors.push("address");
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(String(dob))) errors.push("dob");
   const ssnDigits = String(ssn || "").replace(/\D/g, "");
-  if (ssnDigits.length !== 4) errors.push("ssn");
+  if (ssnDigits.length !== 9) errors.push("ssn");
   const tokenRe = /^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i;
   if (idDocToken && !tokenRe.test(String(idDocToken))) errors.push("idDocToken");
   if (utilityDocToken && !tokenRe.test(String(utilityDocToken))) errors.push("utilityDocToken");
@@ -698,6 +700,13 @@ app.post("/api/finalize-checkout", async (req, res) => {
       const stripeCustomerId = typeof si.customer === "string"
         ? si.customer
         : si.customer?.id || null;
+      let ssnEncrypted = null;
+      try {
+        ssnEncrypted = await encryptPII(intake.ssnDigits);
+      } catch (err) {
+        console.error("[finalize] SSN encryption failed:", err.message);
+        return res.status(500).json({ message: "Could not securely store sensitive information." });
+      }
 
       updatedSubmission = await prisma.checkoutSubmission.create({
         data: {
@@ -707,7 +716,7 @@ app.post("/api/finalize-checkout", async (req, res) => {
           address: intake.address.slice(0, 500),
           dob: intake.dob,
           ssnLast4: intake.ssnLast4,
-          ssnEncrypted: null,
+          ssnEncrypted,
           idDocPath: intake.idDocPath,
           utilityDocPath: intake.utilityDocPath,
           creditReportDocPath: intake.creditReportDocPath,

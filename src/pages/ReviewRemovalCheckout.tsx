@@ -521,6 +521,13 @@ function formatPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+function formatSSN(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 9);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+}
+
 function formatFullAddress(form: CreditRepairForm): string {
   const line1 = form.address.trim();
   const unit = form.addressUnit.trim();
@@ -898,7 +905,7 @@ function SubmissionForm() {
     addressCity: "City",
     addressState: "State",
     dob: "Date of Birth",
-    ssn: "Last 4 of SSN",
+    ssn: "Social Security Number",
   };
 
   const duplicateEmailMessage =
@@ -957,7 +964,7 @@ function SubmissionForm() {
     if (!/[A-Za-z]/.test(form.addressCity.trim())) errs.addressCity = "Enter your city";
     if (!form.addressState.trim()) errs.addressState = "Select your state";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) errs.dob = "Required";
-    if (form.ssn.replace(/\D/g, "").length !== 4) errs.ssn = "Enter the last 4 digits of your SSN";
+    if (form.ssn.replace(/\D/g, "").length !== 9) errs.ssn = "Enter your 9-digit SSN";
     return errs;
   }, [form.address, form.addressCity, form.addressState, form.addressZip, form.dob, form.ssn]);
 
@@ -1015,7 +1022,7 @@ function SubmissionForm() {
     const dobDisplay = form.dob
       ? new Date(form.dob + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : "[Your DOB]";
-    const ssnDisplay = form.ssn ? `***-**-${form.ssn.replace(/\D/g, "").slice(-4)}` : "[Last 4 of SSN]";
+    const ssnDisplay = form.ssn ? `***-**-${form.ssn.replace(/\D/g, "").slice(-4)}` : "[SSN]";
 
     return [
       todayStr,
@@ -1376,7 +1383,7 @@ function SubmissionForm() {
                   />
                 </Field>
 
-                <Field id="ssn" label="Last 4 of SSN" required error={showStep2Errors ? step2Errors.ssn : undefined}>
+                <Field id="ssn" label="Social Security Number" required hint="encrypted" error={showStep2Errors ? step2Errors.ssn : undefined}>
                   <div className="relative">
                     <input
                       id="ssn"
@@ -1384,9 +1391,9 @@ function SubmissionForm() {
                       inputMode="numeric"
                       autoComplete="off"
                       className={`${inputClass} rounded-full border-[#0f3d4a]/80 bg-white px-5 pr-10 font-mono tracking-wider ${showStep2Errors && step2Errors.ssn ? "border-red-300 ring-2 ring-red-100" : ""}`}
-                      value={form.ssn}
-                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      placeholder="1234"
+                      value={formatSSN(form.ssn)}
+                      onChange={(e) => update("ssn", e.target.value.replace(/\D/g, "").slice(0, 9))}
+                      placeholder="123-45-6789"
                     />
                     <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
