@@ -318,6 +318,21 @@ function SubmissionForm() {
     ].join("\n");
   }, [form, todayStr]);
 
+  const buildCheckoutPayload = () => ({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    email: form.email.trim(),
+    phone: form.phone,
+    address: form.address.trim(),
+    dob: form.dob,
+    ssn: form.ssn.replace(/\D/g, ""),
+    idDocToken: idDoc?.token,
+    utilityDocToken: utilityDoc?.token,
+    creditReportDocToken: null,
+    signatureDataUrl,
+    authLetterSnapshot: authLetterText,
+  });
+
   const handleSubmitForReview = async (e: FormEvent) => {
     e.preventDefault();
     if (status !== "idle" && status !== "error") return;
@@ -340,19 +355,7 @@ function SubmissionForm() {
       const resp = await fetch("/api/credit-repair-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim(),
-          phone: form.phone,
-          address: form.address.trim(),
-          dob: form.dob,
-          ssn: form.ssn.replace(/\D/g, ""),
-          idDocToken: idDoc?.token,
-          utilityDocToken: utilityDoc?.token,
-          signatureDataUrl,
-          authLetterSnapshot: authLetterText,
-        }),
+        body: JSON.stringify(buildCheckoutPayload()),
       });
       const data = await resp.json();
       if (!resp.ok) {
@@ -370,13 +373,20 @@ function SubmissionForm() {
 
   const handleCardSaved = async (intentId: string) => {
     try {
-      await fetch("/api/finalize-checkout", {
+      const resp = await fetch("/api/finalize-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setupIntentId: intentId }),
+        body: JSON.stringify({ setupIntentId: intentId, ...buildCheckoutPayload() }),
       });
-    } catch (_) {
-      /* non-blocking */
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        throw new Error(data?.message || "Could not finalize checkout.");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not finalize checkout.";
+      setStatus("card_step");
+      setErrorMsg(msg);
+      throw new Error(msg);
     }
     setStatus("success");
   };
@@ -513,7 +523,7 @@ function SubmissionForm() {
 
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">
                 <Shield className="w-4 h-4 text-[#1e5a8a] flex-shrink-0" />
-                Your SSN is encrypted with envelope encryption before being stored. Only authorized staff can decrypt it.
+                All transactions are secure and encrypted.
               </div>
             </div>
           )}

@@ -305,7 +305,7 @@ app.get("/api/payment-method-funding", async (req, res) => {
   }
 });
 
-// ── Credit-repair checkout: save PII + uploads + signature + SetupIntent ──
+// ── Credit-repair checkout: validate intake + create SetupIntent ──
 app.get("/api/credit-repair-checkout/email-exists", async (req, res) => {
   const email = String(req.query.email || "").trim().toLowerCase();
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
@@ -323,6 +323,80 @@ app.get("/api/credit-repair-checkout/email-exists", async (req, res) => {
     return res.status(500).json({ message: "Could not check this email right now." });
   }
 });
+
+function validateCreditRepairCheckoutPayload(body = {}) {
+  const {
+    firstName, lastName, email, phone, address, dob, ssn,
+    idDocToken, utilityDocToken, creditReportDocToken,
+    signatureDataUrl, authLetterSnapshot,
+  } = body || {};
+
+  const first = String(firstName || "").trim();
+  const last = String(lastName || "").trim();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const phoneValue = String(phone || "").trim();
+  const addressValue = String(address || "").trim();
+  const dobValue = String(dob || "").trim();
+  const ssnDigits = String(ssn || "").replace(/\D/g, "");
+  const signatureValue = String(signatureDataUrl || "");
+  const errors = [];
+
+  if (first.length < 1) errors.push("firstName");
+  if (last.length < 1) errors.push("lastName");
+  if (!normalizedEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalizedEmail)) errors.push("email");
+  if (phoneValue.replace(/\D/g, "").length < 7) errors.push("phone");
+  if (addressValue.length < 5) errors.push("address");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dobValue)) errors.push("dob");
+  if (ssnDigits.length !== 4) errors.push("ssn");
+
+  const tokenRe = /^[0-9a-f-]{36}\.(jpe?g|png|pdf)$/i;
+  const docTokens = {
+    idDocToken: idDocToken ? String(idDocToken) : null,
+    utilityDocToken: utilityDocToken ? String(utilityDocToken) : null,
+    creditReportDocToken: creditReportDocToken ? String(creditReportDocToken) : null,
+  };
+  if (docTokens.idDocToken && !tokenRe.test(docTokens.idDocToken)) errors.push("idDocToken");
+  if (docTokens.utilityDocToken && !tokenRe.test(docTokens.utilityDocToken)) errors.push("utilityDocToken");
+  if (docTokens.creditReportDocToken && !tokenRe.test(docTokens.creditReportDocToken)) errors.push("creditReportDocToken");
+  if (!signatureValue || !/^data:image\/png;base64,/.test(signatureValue)) errors.push("signature");
+
+  if (errors.length) {
+    return { ok: false, status: 400, message: "Validation failed", fields: errors };
+  }
+
+  const privateDir = path.join(__dirname, "..", "private-uploads");
+  for (const t of Object.values(docTokens)) {
+    if (!t) continue;
+    const full = path.join(privateDir, t);
+    if (!full.startsWith(privateDir + path.sep) || !fs.existsSync(full)) {
+      return { ok: false, status: 400, message: "Uploaded document not found. Please re-upload." };
+    }
+  }
+
+  if (signatureValue.length > 350_000) {
+    return { ok: false, status: 413, message: "Signature image too large." };
+  }
+
+  const fullName = `${first} ${last}`.trim();
+  return {
+    ok: true,
+    data: {
+      firstName: first,
+      lastName: last,
+      fullName,
+      normalizedEmail,
+      phone: phoneValue,
+      address: addressValue,
+      dob: dobValue,
+      ssnLast4: ssnDigits,
+      idDocPath: docTokens.idDocToken,
+      utilityDocPath: docTokens.utilityDocToken,
+      creditReportDocPath: docTokens.creditReportDocToken,
+      signatureDataUrl: signatureValue,
+      authLetterSnapshot: authLetterSnapshot ? String(authLetterSnapshot).slice(0, 10000) : null,
+    },
+  };
+}
 
 app.post("/api/credit-repair-checkout", async (req, res) => {
   const stripe = getStripe();
@@ -420,32 +494,8 @@ app.post("/api/credit-repair-checkout", async (req, res) => {
       },
     });
 
-    const submission = await prisma.checkoutSubmission.create({
-      data: {
-        name: fullName,
-        email: normalizedEmail,
-        phone: String(phone).slice(0, 50),
-        address: String(address).slice(0, 500),
-        dob: String(dob),
-        ssnLast4: ssnDigits,
-        ssnEncrypted: null,
-        idDocPath: idDocToken ? String(idDocToken) : null,
-        utilityDocPath: utilityDocToken ? String(utilityDocToken) : null,
-        creditReportDocPath: creditReportDocToken ? String(creditReportDocToken) : null,
-        signatureDataUrl: String(signatureDataUrl),
-        signedAt: new Date(),
-        authLetterSnapshot: authLetterSnapshot ? String(authLetterSnapshot).slice(0, 10000) : null,
-        quantity: 1,
-        amount: 0,
-        stripeCustomerId: customer.id,
-        stripeSetupIntentId: setupIntent.id,
-        paymentStatus: "pending",
-      },
-    });
-
     return res.json({
       clientSecret: setupIntent.client_secret,
-      submissionId: submission.id,
       customerId: customer.id,
       setupIntentId: setupIntent.id,
     });
@@ -593,40 +643,89 @@ app.post("/api/create-setup-intent", async (req, res) => {
   }
 });
 
-// ── Finalize checkout: PATCH CRM lead with Stripe IDs ─────────────
+// ── Finalize checkout: save confirmed card intake + PATCH CRM lead ─────────────
 // Called by the frontend after the SetupIntent succeeds and the
-// payment method is confirmed. Failures are non-blocking.
+// payment method is confirmed.
 app.post("/api/finalize-checkout", async (req, res) => {
   const { setupIntentId } = req.body || {};
   if (!setupIntentId) return res.status(400).json({ message: "Missing setupIntentId." });
 
   try {
-    const submission = await prisma.checkoutSubmission.findFirst({
-      where: { stripeSetupIntentId: String(setupIntentId) },
-    });
-    if (!submission) return res.status(404).json({ message: "Submission not found." });
-
     const stripe = getStripe();
-    let paymentMethodId = submission.stripePaymentMethodId;
-    if (!paymentMethodId && stripe) {
-      try {
-        const si = await stripe.setupIntents.retrieve(setupIntentId);
-        paymentMethodId = typeof si.payment_method === "string"
-          ? si.payment_method
-          : si.payment_method?.id || null;
-      } catch (e) {
-        console.error("[finalize] Could not retrieve SetupIntent", e.message);
-      }
+    if (!stripe) return res.status(500).json({ message: "Stripe is not configured." });
+
+    const si = await stripe.setupIntents.retrieve(String(setupIntentId));
+    if (si.status !== "succeeded") {
+      return res.status(400).json({ message: "Card has not been saved yet." });
     }
 
-    // Persist payment method id + status in our DB
-    const updatedSubmission = await prisma.checkoutSubmission.update({
-      where: { id: submission.id },
-      data: {
-        stripePaymentMethodId: paymentMethodId || submission.stripePaymentMethodId,
-        paymentStatus: "card_saved",
-      },
+    const paymentMethodId = typeof si.payment_method === "string"
+      ? si.payment_method
+      : si.payment_method?.id || null;
+    if (!paymentMethodId) {
+      return res.status(400).json({ message: "Payment method not found." });
+    }
+
+    let submission = await prisma.checkoutSubmission.findFirst({
+      where: { stripeSetupIntentId: String(setupIntentId) },
     });
+    let updatedSubmission = null;
+
+    if (!submission) {
+      const parsed = validateCreditRepairCheckoutPayload(req.body);
+      if (!parsed.ok) {
+        return res.status(parsed.status).json({ message: parsed.message, fields: parsed.fields });
+      }
+      const intake = parsed.data;
+      const existing = await prisma.checkoutSubmission.findFirst({
+        where: { email: intake.normalizedEmail },
+        select: { id: true },
+      });
+      if (existing) {
+        return res.status(409).json({
+          message: "An application already exists for this email address. Please log in to your client dashboard or contact support.",
+          fields: ["email"],
+        });
+      }
+
+      const stripeCustomerId = typeof si.customer === "string"
+        ? si.customer
+        : si.customer?.id || null;
+
+      updatedSubmission = await prisma.checkoutSubmission.create({
+        data: {
+          name: intake.fullName,
+          email: intake.normalizedEmail,
+          phone: intake.phone.slice(0, 50),
+          address: intake.address.slice(0, 500),
+          dob: intake.dob,
+          ssnLast4: intake.ssnLast4,
+          ssnEncrypted: null,
+          idDocPath: intake.idDocPath,
+          utilityDocPath: intake.utilityDocPath,
+          creditReportDocPath: intake.creditReportDocPath,
+          signatureDataUrl: intake.signatureDataUrl,
+          signedAt: new Date(),
+          authLetterSnapshot: intake.authLetterSnapshot,
+          quantity: 1,
+          amount: 0,
+          stripeCustomerId,
+          stripeSetupIntentId: String(setupIntentId),
+          stripePaymentMethodId: paymentMethodId,
+          paymentStatus: "card_saved",
+        },
+      });
+      submission = updatedSubmission;
+    } else {
+      updatedSubmission = await prisma.checkoutSubmission.update({
+        where: { id: submission.id },
+        data: {
+          stripePaymentMethodId: paymentMethodId || submission.stripePaymentMethodId,
+          paymentStatus: "card_saved",
+        },
+      });
+      submission = updatedSubmission;
+    }
 
     // Patch CRM lead so it auto-flips to status "payment_method_added"
     const crm = require("./helpers/crmClient");
@@ -672,7 +771,7 @@ app.post("/api/finalize-checkout", async (req, res) => {
         dashboardUrl: urls.dashboardUrl,
       };
 
-      if (await isEmailEnabled("checkout-success")) {
+      if (portalResult.temporaryPassword && await isEmailEnabled("checkout-success")) {
         try {
           await sendCheckoutSuccessEmail(updatedSubmission, portal);
         } catch (e) {

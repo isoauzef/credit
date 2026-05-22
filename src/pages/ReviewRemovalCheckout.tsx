@@ -951,6 +951,21 @@ function SubmissionForm() {
     ].join("\n");
   }, [form, todayStr]);
 
+  const buildCheckoutPayload = () => ({
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim(),
+    email: form.email.trim(),
+    phone: form.phone,
+    address: form.address.trim(),
+    dob: form.dob,
+    ssn: form.ssn.replace(/\D/g, ""),
+    idDocToken: null,
+    utilityDocToken: null,
+    creditReportDocToken: null,
+    signatureDataUrl,
+    authLetterSnapshot: authLetterText,
+  });
+
   const handleSubmitForReview = async (e: FormEvent) => {
     e.preventDefault();
     if (status !== "idle" && status !== "error") return;
@@ -973,20 +988,7 @@ function SubmissionForm() {
       const resp = await fetch("/api/credit-repair-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim(),
-          phone: form.phone,
-          address: form.address.trim(),
-          dob: form.dob,
-          ssn: form.ssn.replace(/\D/g, ""),
-          idDocToken: null,
-          utilityDocToken: null,
-          creditReportDocToken: null,
-          signatureDataUrl,
-          authLetterSnapshot: authLetterText,
-        }),
+        body: JSON.stringify(buildCheckoutPayload()),
       });
       const data = await resp.json();
       if (!resp.ok) {
@@ -1007,14 +1009,20 @@ function SubmissionForm() {
       const resp = await fetch("/api/finalize-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ setupIntentId: intentId }),
+        body: JSON.stringify({ setupIntentId: intentId, ...buildCheckoutPayload() }),
       });
       const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        throw new Error(data?.message || "Could not finalize checkout.");
+      }
       if (data?.portal) {
         setPortalCredentials(data.portal);
       }
-    } catch (_) {
-      /* non-blocking */
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not finalize checkout.";
+      setStatus("card_step");
+      setErrorMsg(msg);
+      throw new Error(msg);
     }
     if (!purchaseEventTrackedRef.current) {
       trackFacebookPurchase({ value: 200, currency: "USD" });
@@ -1232,7 +1240,7 @@ function SubmissionForm() {
 
               <div className="flex items-center gap-2 text-xs text-gray-500 bg-blue-50/40 rounded-lg px-3 py-2">
                 <Shield className="w-4 h-4 text-[#1e5a8a] flex-shrink-0" />
-                Only the last 4 digits of your SSN are stored for identity verification.
+                All transactions are secure and encrypted.
               </div>
             </div>
           )}
@@ -1389,7 +1397,7 @@ function CardForm({
   cardSecurityText,
 }: {
   clientSecret: string;
-  onSuccess: (setupIntentId: string) => void;
+  onSuccess: (setupIntentId: string) => void | Promise<void>;
   onError: (msg: string) => void;
   saving: boolean;
   setSaving: (v: boolean) => void;
@@ -1464,7 +1472,7 @@ function CardForm({
         } catch {
           // Non-fatal — proceed even if funding lookup fails.
         }
-        onSuccess(setupIntent.id);
+        await onSuccess(setupIntent.id);
       } else if (setupIntent?.status === "requires_action") {
         setErrorMsg("Your bank requires additional verification. Please follow the prompts.");
         setSaving(false);
