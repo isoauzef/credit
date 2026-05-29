@@ -6,15 +6,15 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen break-words bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="container mx-auto flex items-center justify-between px-6 py-6 sm:px-8">
-          <Link to="/" className="text-lg font-semibold tracking-tight text-slate-900 hover:text-slate-600">
+        <div className="container mx-auto flex flex-col items-start gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
+          <Link to="/" className="text-base font-semibold tracking-tight text-slate-900 hover:text-slate-600 sm:text-lg">
             creditremovers.com
           </Link>
-          <nav className="flex items-center gap-4 text-sm sm:gap-6">
-            <Link to="/" className="text-slate-600 hover:text-slate-900">
+          <nav className="flex w-full flex-wrap items-center gap-3 text-sm sm:w-auto sm:gap-6">
+            <Link to="/" className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 hover:text-slate-900 sm:bg-transparent sm:px-0 sm:py-0">
               Home
             </Link>
-            <Link to="/privacy-policy" className="text-slate-600 hover:text-slate-900">
+            <Link to="/privacy-policy" className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 hover:text-slate-900 sm:bg-transparent sm:px-0 sm:py-0">
               Privacy Policy
             </Link>
           </nav>

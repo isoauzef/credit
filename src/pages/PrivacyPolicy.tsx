@@ -1,20 +1,35 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 export default function PrivacyPolicy() {
   const lastUpdated = "5/29/2026";
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return;
+
+    const id = decodeURIComponent(location.hash.slice(1));
+    const scrollToSection = () => {
+      document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "auto" });
+    };
+
+    scrollToSection();
+    const timer = window.setTimeout(scrollToSection, 100);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   return (
     <div className="min-h-screen break-words bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="container mx-auto flex items-center justify-between px-6 py-6 sm:px-8">
-          <Link to="/" className="text-lg font-semibold tracking-tight text-slate-900 hover:text-slate-600">
+        <div className="container mx-auto flex flex-col items-start gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-6">
+          <Link to="/" className="text-base font-semibold tracking-tight text-slate-900 hover:text-slate-600 sm:text-lg">
             creditremovers.com
           </Link>
-          <nav className="flex items-center gap-4 text-sm sm:gap-6">
-            <Link to="/" className="text-slate-600 hover:text-slate-900">
+          <nav className="flex w-full flex-wrap items-center gap-3 text-sm sm:w-auto sm:gap-6">
+            <Link to="/" className="rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 hover:text-slate-900 sm:bg-transparent sm:px-0 sm:py-0">
               Home
             </Link>
-            <Link to="/terms-of-service" className="text-slate-600 hover:text-slate-900">
+            <Link to="/terms-of-service" className="whitespace-nowrap rounded-full bg-slate-100 px-3 py-1.5 text-slate-600 hover:text-slate-900 sm:bg-transparent sm:px-0 sm:py-0">
               Terms of Service
             </Link>
           </nav>
@@ -104,7 +119,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section id="california-privacy-rights" className="scroll-mt-24 space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">10.0. Your California Privacy Rights</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">7. Your California Privacy Rights</h2>
             <p>California residents may also take advantage of the following rights:</p>
             <p>
               You may request, up to two times each year, that we disclose to you the categories and specific pieces of personal information that we have collected about you, the categories of sources from which your personal information is collected, the business or commercial purpose for collecting your personal information, the categories of personal information that we disclosed for a business purpose, any categories of personal information that we sold or shared about you, the categories of third parties with whom we have shared your personal information, and the business or commercial purpose for selling or sharing your personal information, if applicable.
@@ -133,7 +148,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section id="contact" className="scroll-mt-24 space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">11. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">8. Contact Us</h2>
             <p>
               Have questions about this policy or want to exercise your privacy rights? Contact our team at <a href="mailto:support@creditremovers.com" className="text-cyan-700 hover:text-cyan-600">support@creditremovers.com</a>. We respond within two business days.
             </p>
