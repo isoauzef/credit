@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 
 export default function PrivacyPolicy() {
-  const lastUpdated = "5/14/2026";
+  const lastUpdated = "5/29/2026";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
+    <div className="min-h-screen break-words bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="container mx-auto flex items-center justify-between px-6 py-6 sm:px-8">
           <Link to="/" className="text-lg font-semibold tracking-tight text-slate-900 hover:text-slate-600">
@@ -103,8 +103,37 @@ export default function PrivacyPolicy() {
             </p>
           </section>
 
+          <section id="california-privacy-rights" className="scroll-mt-24 space-y-4">
+            <h2 className="text-2xl font-semibold text-slate-900">10.0. Your California Privacy Rights</h2>
+            <p>California residents may also take advantage of the following rights:</p>
+            <p>
+              You may request, up to two times each year, that we disclose to you the categories and specific pieces of personal information that we have collected about you, the categories of sources from which your personal information is collected, the business or commercial purpose for collecting your personal information, the categories of personal information that we disclosed for a business purpose, any categories of personal information that we sold or shared about you, the categories of third parties with whom we have shared your personal information, and the business or commercial purpose for selling or sharing your personal information, if applicable.
+            </p>
+            <p>
+              You may request that we delete any personal information that we have collected from or about you. Note that there are some reasons we will not be able to fully address your request, such as if we need to complete a transaction for you, detect and protect against fraudulent or illegal activity, exercise our rights, or comply with a legal obligation.
+            </p>
+            <p>
+              You may request to opt out of our sale or sharing of your personal information to third parties. This means that, if you opt out, going forward, we will not share your information with such third parties to use for their own commercial purposes unless you later direct us to do so.
+            </p>
+            <p>
+              For verification purposes, please send an email to{" "}
+              <a href="mailto:support@creditremovers.com" className="text-cyan-700 hover:text-cyan-600">
+                support@creditremovers.com
+              </a>{" "}
+              with the subject line "CCPA Opt Out". In that email, please provide your name, address, telephone number, and email address. Further information may be required for verification. Additionally, please let us know whether this request is for yourself or on behalf of another person. We value your privacy and will not discriminate in response to your exercise of your privacy rights. We will respond to your access and deletion requests within 45 days of receipt of your request, after proper verification, unless we need additional time, in which case we will let you know. We will respond to your opt-out requests as soon as reasonably possible.
+            </p>
+            <p>
+              For purposes of compliance with the California Consumer Privacy Act, in addition to the further details described throughout this Privacy Policy, we make the following disclosures:
+            </p>
+            <ul className="list-disc space-y-2 pl-6 text-slate-600">
+              <li>We collect the following categories of personal information: identifiers/contact information, commercial information, internet or other electronic network activity information, geolocation, visual and audio information, and profiles and inferences drawn from the above.</li>
+              <li>We disclose the following categories of personal information for a business or commercial purpose: identifiers/contact information, commercial information, internet or other electronic network activity information, geolocation, visual and audio information, and profiles and inferences drawn from the above.</li>
+              <li>We may disclose the following categories of personal information to third parties for marketing purposes: identifiers/contact information, commercial information, internet or other electronic network activity information, geolocation, visual and audio information, and profiles and inferences drawn from the above, which may be considered a "sale" or "sharing" of information under the California Consumer Privacy Act.</li>
+            </ul>
+          </section>
+
           <section id="contact" className="scroll-mt-24 space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">7. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">11. Contact Us</h2>
             <p>
               Have questions about this policy or want to exercise your privacy rights? Contact our team at <a href="mailto:support@creditremovers.com" className="text-cyan-700 hover:text-cyan-600">support@creditremovers.com</a>. We respond within two business days.
             </p>

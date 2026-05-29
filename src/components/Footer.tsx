@@ -24,6 +24,7 @@ export function Footer({ svgPaths }: FooterProps) {
   const legal = [
     { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms of Service", href: "/terms-of-service" },
+    { label: "Do Not Sell My Info", href: "/privacy-policy#california-privacy-rights" },
   ];
 
   return (

@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 
 export default function TermsOfService() {
-  const lastUpdated = "5/14/2026";
+  const lastUpdated = "5/29/2026";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
+    <div className="min-h-screen break-words bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="container mx-auto flex items-center justify-between px-6 py-6 sm:px-8">
           <Link to="/" className="text-lg font-semibold tracking-tight text-slate-900 hover:text-slate-600">
@@ -107,8 +107,23 @@ export default function TermsOfService() {
             </p>
           </section>
 
+          <section id="privacy-and-california-rights" className="scroll-mt-24 space-y-4">
+            <h2 className="text-2xl font-semibold text-slate-900">9. Privacy &amp; California Rights</h2>
+            <p>
+              Your use of this website is also governed by our{" "}
+              <Link to="/privacy-policy" className="text-cyan-700 hover:text-cyan-600">
+                Privacy Policy
+              </Link>
+              , including the{" "}
+              <Link to="/privacy-policy#california-privacy-rights" className="text-cyan-700 hover:text-cyan-600">
+                California privacy and Do Not Sell My Info notice
+              </Link>
+              . By submitting a form, you agree that we may process your information as described there.
+            </p>
+          </section>
+
           <section id="contact" className="scroll-mt-24 space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">9. Contact</h2>
+            <h2 className="text-2xl font-semibold text-slate-900">10. Contact</h2>
             <p>
               Questions about these terms? Email <a href="mailto:support@creditremovers.com" className="ml-1 text-cyan-700 hover:text-cyan-600">support@creditremovers.com</a>.
             </p>

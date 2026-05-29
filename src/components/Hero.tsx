@@ -106,6 +106,7 @@ export function Hero({
   const [statusMessage, setStatusMessage] = useState("");
   const [submissionComplete, setSubmissionComplete] = useState(false);
   const [step2SubmitAttempted, setStep2SubmitAttempted] = useState(false);
+  const [tcpaConsent, setTcpaConsent] = useState(true);
   const leadEventTrackedRef = useRef(false);
   const formContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -343,6 +344,14 @@ export function Hero({
     }
   };
 
+  const handleTcpaConsentChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setTcpaConsent(event.target.checked);
+    if (status !== "idle") {
+      setStatus("idle");
+      setStatusMessage("");
+    }
+  };
+
   const handleNext = () => {
     if (submissionComplete) {
       return;
@@ -468,6 +477,12 @@ export function Hero({
       return;
     }
 
+    if (!tcpaConsent) {
+      setStatus("error");
+      setStatusMessage("Please confirm the consent disclosure before submitting.");
+      return;
+    }
+
     if (!isValidEmail(formData.email)) {
       setFieldErrors(prev => ({
         ...prev,
@@ -516,6 +531,9 @@ export function Hero({
             creditScore: formData.creditScore,
             negativeItems: formData.negativeItems,
             hasCreditReport: formData.hasReport,
+            tcpaConsent,
+            tcpaConsentText:
+              "By clicking Submit I agree by electronic signature to be contacted about credit by a live agent, artificial or prerecorded voice, and SMS text at my residential or cellular number, dialed manually or by autodialer even if my phone number is on a do-not-call registry. Consent is not a condition to purchase services. I also agree to the Privacy Policy, Terms of Service, and CCPA notice.",
           },
         }),
       });
@@ -528,6 +546,7 @@ export function Hero({
       setStatus("success");
       setSubmissionComplete(true);
       setFormData({ ...initialFormState });
+      setTcpaConsent(true);
       setCurrentStep(1);
       setFieldErrors(createInitialErrorState());
     setStep2SubmitAttempted(false);
@@ -639,13 +658,14 @@ export function Hero({
           <div className="lg:ml-auto w-full max-w-lg">
             <div
               id="hero-contact"
-              className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden scroll-mt-32"
+              className="bg-white rounded-[1.75rem] shadow-[0_28px_80px_rgba(15,23,42,0.28)] border border-white/40 overflow-hidden scroll-mt-32 ring-1 ring-slate-900/5"
               ref={formContainerRef}
             >
               <div
-                className="px-6 py-4 text-white"
+                className="relative overflow-hidden px-6 py-5 text-white"
                 style={{ background: "linear-gradient(to right, rgb(41, 128, 185), rgb(52, 152, 219))" }}
               >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/45" />
                 <h3 className="text-xl lg:text-2xl mb-1">
                   {submissionComplete ? "Thank you!" : (cms?.formTitle ?? "Get A Free Quote")}
                 </h3>
@@ -670,8 +690,10 @@ export function Hero({
                 <>
                   <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-600">Step {currentStep} of {totalSteps}</span>
-                      <span className="text-sm text-blue-600">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-600 shadow-sm">
+                        Step {currentStep} of {totalSteps}
+                      </span>
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                         {Math.round((currentStep / totalSteps) * 100)}%
                       </span>
                     </div>
@@ -852,6 +874,32 @@ export function Hero({
                               <span>Free consultation. No credit card required.</span>
                             </p>
                           </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-sm">
+                          <label htmlFor="hero-tcpa-consent" className="flex cursor-pointer items-start gap-3">
+                            <input
+                              id="hero-tcpa-consent"
+                              type="checkbox"
+                              checked={tcpaConsent}
+                              onChange={handleTcpaConsentChange}
+                              className="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 accent-blue-600"
+                            />
+                            <span className="text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                              By clicking "Submit" I agree by electronic signature to: (1) be contacted about credit by a live agent, artificial or prerecorded voice, and SMS text at my residential or cellular number, dialed manually or by autodialer even if my phone number is on a do-not-call registry (consent here is not a condition to purchase services); and (2) the{" "}
+                              <a href="/privacy-policy" className="font-semibold text-blue-700 hover:text-blue-600">
+                                Privacy Policy
+                              </a>
+                              ,{" "}
+                              <a href="/terms-of-service" className="font-semibold text-blue-700 hover:text-blue-600">
+                                Terms of Service
+                              </a>
+                              , and{" "}
+                              <a href="/privacy-policy#california-privacy-rights" className="font-semibold text-blue-700 hover:text-blue-600">
+                                CCPA Notice
+                              </a>
+                              .
+                            </span>
+                          </label>
                         </div>
                       </div>
                     )}
