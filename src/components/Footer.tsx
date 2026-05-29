@@ -66,7 +66,7 @@ export function Footer({ svgPaths }: FooterProps) {
 
             {/* CTA Button */}
             <a
-              href="/checkout"
+              href="/#hero-contact"
               className="mt-6 inline-flex w-full items-center justify-center bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-6 py-3 rounded-full text-base lg:text-lg shadow-lg hover:shadow-xl transition-all"
             >
               Get Started

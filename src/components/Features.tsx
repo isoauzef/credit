@@ -82,7 +82,7 @@ export function Features({ background, rectangleIcons, svgPaths }: FeaturesProps
         {/* CTA */}
         <div className="text-center mt-12 lg:mt-16">
           <a
-            href="/checkout"
+            href="/#hero-contact"
             className="inline-block bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-8 py-4 rounded-full text-lg shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
           >
             Get Started

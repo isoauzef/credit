@@ -103,7 +103,7 @@ export function CaseStudies() {
                 </div>
 
                 <a
-                  href="/checkout"
+                  href="/#hero-contact"
                   className="inline-block px-8 py-4 bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 border-3 border-transparent rounded-full text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 >
                   Learn More

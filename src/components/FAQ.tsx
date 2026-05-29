@@ -124,7 +124,7 @@ export function FAQ({ image, background, svgPaths }: FAQProps) {
               </div>
             </div>
             <a
-              href="/checkout"
+              href="/#hero-contact"
               className="inline-flex items-center justify-center bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-8 py-4 rounded-full text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 mt-4 bg-[rgba(239,98,98,0)]"
             >
               Get Started

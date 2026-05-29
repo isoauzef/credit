@@ -127,7 +127,7 @@ export function Platforms({ showBills: showBillsProp, showCta = false }: Platfor
         {showCta && (
           <div className="text-center">
             <a
-              href="/checkout"
+              href="/#hero-contact"
               className="group inline-flex items-center gap-3 bg-gradient-to-r from-coral-500 to-orange-500 hover:from-coral-600 hover:to-orange-600 text-white px-8 py-4 rounded-full text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
             >
               {ctaText}

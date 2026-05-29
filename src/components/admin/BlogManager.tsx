@@ -54,6 +54,9 @@ type BlogForm = {
   ogImageUrl: string;
 };
 
+const HOME_TOP_FORM_HREF = "/#hero-contact";
+const BLOG_CTA_SELECTOR = "a.blog-cta";
+
 const EMPTY_FORM: BlogForm = {
   title: "",
   slug: "",
@@ -88,9 +91,15 @@ const BLOCKS = [
   },
   {
     label: "CTA",
-    html: '<p><a class="blog-cta" href="/checkout">Start your credit repair intake</a></p>',
+    html: `<p><a class="blog-cta" href="${HOME_TOP_FORM_HREF}">Start your credit repair intake</a></p>`,
   },
 ];
+
+type BlogCtaLink = {
+  index: number;
+  text: string;
+  href: string;
+};
 
 function slugify(value: string) {
   return value
@@ -123,6 +132,35 @@ function formFromPost(post: BlogPost): BlogForm {
 function formatDate(value?: string | null) {
   if (!value) return "Not published";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
+function getBlogCtaLinks(html: string): BlogCtaLink[] {
+  if (typeof DOMParser === "undefined") return [];
+  const doc = new DOMParser().parseFromString(html || "", "text/html");
+  return Array.from(doc.querySelectorAll<HTMLAnchorElement>(BLOG_CTA_SELECTOR)).map((anchor, index) => ({
+    index,
+    text: anchor.textContent?.trim() || `CTA ${index + 1}`,
+    href: anchor.getAttribute("href") || "",
+  }));
+}
+
+function updateBlogCtaLink(html: string, index: number, href: string) {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html || "", "text/html");
+  const anchors = Array.from(doc.querySelectorAll<HTMLAnchorElement>(BLOG_CTA_SELECTOR));
+  const anchor = anchors[index];
+  if (!anchor) return html;
+  anchor.setAttribute("href", href.trim() || HOME_TOP_FORM_HREF);
+  return doc.body.innerHTML;
+}
+
+function updateAllBlogCtaLinks(html: string, href: string) {
+  if (typeof DOMParser === "undefined") return html;
+  const doc = new DOMParser().parseFromString(html || "", "text/html");
+  doc.querySelectorAll<HTMLAnchorElement>(BLOG_CTA_SELECTOR).forEach((anchor) => {
+    anchor.setAttribute("href", href.trim() || HOME_TOP_FORM_HREF);
+  });
+  return doc.body.innerHTML;
 }
 
 function RichBlogEditor({
@@ -270,6 +308,17 @@ export default function BlogManager() {
 
   const setField = <K extends keyof BlogForm>(key: K, value: BlogForm[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const ctaLinks = useMemo(() => getBlogCtaLinks(form.contentHtml), [form.contentHtml]);
+
+  const updateCtaHref = (index: number, href: string) => {
+    setField("contentHtml", updateBlogCtaLink(form.contentHtml, index, href));
+  };
+
+  const sendAllCtasToHomepageForm = () => {
+    setField("contentHtml", updateAllBlogCtaLinks(form.contentHtml, HOME_TOP_FORM_HREF));
+    toast.success("CTA links now point to the homepage form.");
   };
 
   const uploadImage = async (file: File) => {
@@ -556,6 +605,46 @@ export default function BlogManager() {
             </div>
             <RichBlogEditor value={form.contentHtml} onChange={(value) => setField("contentHtml", value)} onUploadImage={uploadImage} />
           </div>
+
+          <details className="rounded-xl border border-slate-800 bg-slate-950/50 p-4" open>
+            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-100">
+              <LinkIcon size={16} /> CTA Button Links
+            </summary>
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-slate-400">
+                Controls links for buttons using{" "}
+                <code className="rounded bg-slate-900 px-1.5 py-0.5 text-cyan-200">blog-cta</code> in this post content.
+              </p>
+              {ctaLinks.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-700 px-3 py-3 text-sm text-slate-500">
+                  No CTA buttons found. Use the CTA block in the editor toolbar to add one.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {ctaLinks.map((cta) => (
+                    <label key={cta.index} className="block rounded-lg border border-slate-800 bg-slate-950 p-3">
+                      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
+                        {cta.text}
+                      </span>
+                      <input
+                        value={cta.href}
+                        onChange={(event) => updateCtaHref(cta.index, event.target.value)}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                        placeholder={HOME_TOP_FORM_HREF}
+                      />
+                    </label>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={sendAllCtasToHomepageForm}
+                    className="rounded-lg border border-cyan-500/40 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/10"
+                  >
+                    Send all CTAs to homepage form
+                  </button>
+                </div>
+              )}
+            </div>
+          </details>
 
           <details className="rounded-xl border border-slate-800 bg-slate-950/50 p-4" open>
             <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-100">

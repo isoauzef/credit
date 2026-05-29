@@ -139,7 +139,7 @@ export function Navigation({
                     </a>
                   ))}
                   <a
-                    href="/checkout"
+                    href="/#hero-contact"
                     className={`text-white px-6 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/30 ${focusRing}`}
                   >
                     Get Started
@@ -199,7 +199,7 @@ export function Navigation({
               ))}
               <div className="pt-3 space-y-3 border-t border-white/10 mt-3">
                 <a
-                  href="/checkout"
+                  href="/#hero-contact"
                   onClick={closeMenu}
                   className={`flex items-center justify-center min-h-[44px] w-full text-white px-6 py-3 rounded-full text-base shadow-md bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-white/30 ${focusRing}`}
                 >
