@@ -13,6 +13,13 @@ const {
 } = require("../helpers/clientDashboard");
 const { buildBlogData, serializeBlogPost, slugify } = require("../helpers/blog");
 const { decryptPII } = require("../helpers/encryption");
+const {
+  buildApiVendorData,
+  generateApiKey,
+  hashApiKey,
+  previewApiKey,
+  serializeApiVendor,
+} = require("../helpers/vendorLeadApi");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_change_me";
@@ -110,6 +117,11 @@ router.get("/contact-submissions", async (_req, res) => {
   try {
     const rows = await prisma.contactSubmission.findMany({
       orderBy: { createdAt: "desc" },
+      include: {
+        assignedVendor: {
+          select: { id: true, name: true, active: true, keyPreview: true },
+        },
+      },
     });
     return res.json(rows);
   } catch (err) {
@@ -154,6 +166,92 @@ router.get("/checkout-submissions", async (_req, res) => {
   } catch (err) {
     console.error("[admin] checkout-submissions list", err);
     return res.status(500).json({ message: "Failed to load" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONTACT LEAD API VENDORS
+// ═══════════════════════════════════════════════════════════════════════════
+async function getVendorCounts(vendorId) {
+  const [assignedLeadCount, deliveredLeadCount, pendingLeadCount] = await Promise.all([
+    prisma.contactSubmission.count({ where: { assignedVendorId: vendorId } }),
+    prisma.contactSubmission.count({ where: { assignedVendorId: vendorId, vendorDeliveredAt: { not: null } } }),
+    prisma.contactSubmission.count({ where: { assignedVendorId: vendorId, vendorDeliveredAt: null } }),
+  ]);
+  return { assignedLeadCount, deliveredLeadCount, pendingLeadCount };
+}
+
+router.get("/api-vendors", async (_req, res) => {
+  try {
+    const vendors = await prisma.apiVendor.findMany({
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+    const withCounts = await Promise.all(
+      vendors.map(async (vendor) => serializeApiVendor(vendor, await getVendorCounts(vendor.id)))
+    );
+    return res.json(withCounts);
+  } catch (err) {
+    console.error("[admin] api-vendors list", err);
+    return res.status(500).json({ message: "Failed to load API vendors." });
+  }
+});
+
+router.post("/api-vendors", async (req, res) => {
+  const data = buildApiVendorData(req.body || {});
+  if (!data.name) return res.status(400).json({ message: "Vendor name is required." });
+
+  try {
+    const apiKey = generateApiKey();
+    const maxVendor = await prisma.apiVendor.findFirst({
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    const created = await prisma.apiVendor.create({
+      data: {
+        ...data,
+        sortOrder: Number.isFinite(Number(req.body?.sortOrder))
+          ? data.sortOrder
+          : (maxVendor?.sortOrder || 0) + 1,
+        keyHash: hashApiKey(apiKey),
+        keyPreview: previewApiKey(apiKey),
+      },
+    });
+    return res.status(201).json(serializeApiVendor(created, {}, apiKey));
+  } catch (err) {
+    console.error("[admin] api-vendor create", err);
+    return res.status(500).json({ message: "Failed to create API vendor." });
+  }
+});
+
+router.put("/api-vendors/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const data = buildApiVendorData(req.body || {});
+  if (!data.name) return res.status(400).json({ message: "Vendor name is required." });
+
+  try {
+    const updated = await prisma.apiVendor.update({ where: { id }, data });
+    return res.json(serializeApiVendor(updated, await getVendorCounts(updated.id)));
+  } catch (err) {
+    console.error("[admin] api-vendor update", err);
+    return res.status(404).json({ message: "API vendor not found." });
+  }
+});
+
+router.post("/api-vendors/:id/rotate-key", async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    const apiKey = generateApiKey();
+    const updated = await prisma.apiVendor.update({
+      where: { id },
+      data: {
+        keyHash: hashApiKey(apiKey),
+        keyPreview: previewApiKey(apiKey),
+      },
+    });
+    return res.json(serializeApiVendor(updated, await getVendorCounts(updated.id), apiKey));
+  } catch (err) {
+    console.error("[admin] api-vendor rotate", err);
+    return res.status(404).json({ message: "API vendor not found." });
   }
 });
 

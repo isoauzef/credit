@@ -14,12 +14,14 @@ const { searchPlaces } = require("./services/google-places");
 const adminRoutes = require("./routes/admin");
 const secureUploadsRoutes = require("./routes/secure-uploads");
 const clientDashboardRoutes = require("./routes/client-dashboard");
+const vendorLeadRoutes = require("./routes/vendor-leads");
 const {
   buildPortalUrls,
   ensureClientDashboardAccountForSubmission,
 } = require("./helpers/clientDashboard");
 const { serializeBlogPost } = require("./helpers/blog");
 const { encryptPII } = require("./helpers/encryption");
+const { createContactSubmissionWithVendor } = require("./helpers/vendorLeadApi");
 
 const app = express();
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3001);
@@ -160,24 +162,22 @@ app.post("/api/contact", async (req, res) => {
   const m = metadata && typeof metadata === "object" ? metadata : {};
 
   try {
-    await prisma.contactSubmission.create({
-      data: {
-        name: String(name),
-        firstName: m.firstName ? String(m.firstName) : null,
-        lastName: m.lastName ? String(m.lastName) : null,
-        email: String(email),
-        phone: String(phone),
-        companyName: m.companyName ? String(m.companyName) : null,
-        companyAddress: m.companyAddress ? String(m.companyAddress) : null,
-        businessLocations: m.businessLocations ? String(m.businessLocations) : null,
-        platform: m.platform ? String(m.platform) : null,
-        negativeReviewsNeedRemoving: (m.negativeReviewsNeedRemoving || m.negativeReviewsToRemove)
-          ? String(m.negativeReviewsNeedRemoving || m.negativeReviewsToRemove)
-          : null,
-        budgetPerRemoval: m.budgetPerRemoval ? String(m.budgetPerRemoval) : null,
-        source: source ? String(source) : null,
-        metadata: metadata || undefined,
-      },
+    await createContactSubmissionWithVendor({
+      name: String(name),
+      firstName: m.firstName ? String(m.firstName) : null,
+      lastName: m.lastName ? String(m.lastName) : null,
+      email: String(email),
+      phone: String(phone),
+      companyName: m.companyName ? String(m.companyName) : null,
+      companyAddress: m.companyAddress ? String(m.companyAddress) : null,
+      businessLocations: m.businessLocations ? String(m.businessLocations) : null,
+      platform: m.platform ? String(m.platform) : null,
+      negativeReviewsNeedRemoving: (m.negativeReviewsNeedRemoving || m.negativeReviewsToRemove)
+        ? String(m.negativeReviewsNeedRemoving || m.negativeReviewsToRemove)
+        : null,
+      budgetPerRemoval: m.budgetPerRemoval ? String(m.budgetPerRemoval) : null,
+      source: source ? String(source) : null,
+      metadata: metadata || undefined,
     });
 
     // Send auto-response email if enabled
@@ -897,6 +897,7 @@ app.get("/api/google/reviews/:id", async (req, res) => {
 app.use("/api/admin", adminRoutes);
 app.use("/api/secure-uploads", secureUploadsRoutes);
 app.use("/api/client", clientDashboardRoutes);
+app.use("/api/vendor", vendorLeadRoutes);
 
 // ── Serve uploaded files (logos, favicons, etc.) ────────────────
 const uploadsDir = path.join(__dirname, "..", "public", "uploads");

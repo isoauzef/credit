@@ -16,7 +16,33 @@ export type ContactSubmission = {
   budgetPerRemoval?: string | null;
   source?: string | null;
   metadata?: Record<string, unknown> | null;
+  assignedVendorId?: number | null;
+  assignedVendor?: {
+    id: number;
+    name: string;
+    active: boolean;
+    keyPreview: string;
+  } | null;
+  vendorAssignedAt?: string | null;
+  vendorDeliveredAt?: string | null;
   createdAt: string;
+};
+
+export type ApiVendor = {
+  id: number;
+  name: string;
+  contactEmail?: string | null;
+  keyPreview: string;
+  active: boolean;
+  sortOrder: number;
+  notes?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedLeadCount: number;
+  deliveredLeadCount: number;
+  pendingLeadCount: number;
+  apiKey?: string;
 };
 
 export type CheckoutSubmission = {

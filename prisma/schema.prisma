@@ -40,9 +40,32 @@ model ContactSubmission {
   budgetPerRemoval            String?  @db.VarChar(128)
   source                      String?  @db.VarChar(64)
   metadata                    Json?
+  assignedVendorId            Int?
+  assignedVendor              ApiVendor? @relation(fields: [assignedVendorId], references: [id], onDelete: SetNull)
+  vendorAssignedAt            DateTime?
+  vendorDeliveredAt           DateTime?
   createdAt                   DateTime @default(now())
 
+  @@index([assignedVendorId, vendorDeliveredAt])
   @@map("contact_submissions")
+}
+
+model ApiVendor {
+  id                 Int                 @id @default(autoincrement())
+  name               String              @db.VarChar(160)
+  contactEmail       String?             @db.VarChar(255)
+  keyHash            String              @unique @db.VarChar(64)
+  keyPreview         String              @db.VarChar(32)
+  active             Boolean             @default(true)
+  sortOrder          Int                 @default(0)
+  notes              String?             @db.Text
+  lastUsedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  contactSubmissions ContactSubmission[]
+
+  @@index([active, sortOrder])
+  @@map("api_vendors")
 }
 
 // ── Checkout form submissions with Stripe status ────────────────────
